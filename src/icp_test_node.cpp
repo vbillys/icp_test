@@ -11,6 +11,8 @@
 #include <sensor_msgs/PointCloud2.h>
 
 #include <pcl/keypoints/uniform_sampling.h>
+#include <pcl/registration/transformation_estimation_point_to_plane_lls.h>
+#include <pcl/registration/transformation_validation_euclidean.h>
 
 #include <velodyne_pointcloud/rawdata.h>
 #include <velodyne_pointcloud/point_types.h>
@@ -31,6 +33,7 @@ class ICPProcess
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in  ;//(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out ;//(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr orig_cloud;//(new pcl::PointCloud<pcl::PointXYZ>);
     //pcl::PointCloud<pcl::PointXYZ> cloud_in  ;//(new pcl::PointCloud<pcl::PointXYZ>);
     //pcl::PointCloud<pcl::PointXYZ> cloud_out ;//(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -44,7 +47,17 @@ class ICPProcess
 
       cloud_in  = pcl::PointCloud<pcl::PointXYZ>::Ptr (new pcl::PointCloud<pcl::PointXYZ>);
       cloud_out = pcl::PointCloud<pcl::PointXYZ>::Ptr (new pcl::PointCloud<pcl::PointXYZ>);
+      orig_cloud= pcl::PointCloud<pcl::PointXYZ>::Ptr (new pcl::PointCloud<pcl::PointXYZ>);
 
+      //icp.setMaximumIterations(50);
+      // Set the max correspondence distance to 5cm (e.g., correspondences with higher distances will be ignored)
+      icp.setMaxCorrespondenceDistance (0.05);
+      // // Set the transformation epsilon (criterion 2)
+      icp.setTransformationEpsilon (1e-8);
+      // // Set the euclidean distance difference epsilon (criterion 3)
+      icp.setEuclideanFitnessEpsilon (1);
+      //pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointXYZ, pcl::PointXYZ,float>::Ptr trans_lls (new pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointXYZ, pcl::PointXYZ, float>);
+      //icp.setTransformationEstimation (trans_lls);
 
     }
     ~ICPProcess()
@@ -56,8 +69,11 @@ class ICPProcess
 
     void pcCallback (const sensor_msgs::PointCloud2ConstPtr &scanMsg)
     {
+
+      ros::Time time_begin = ros::Time::now();
+
       //VPointCloud::Ptr orig_cloud(new VPointCloud());
-      pcl::PointCloud<pcl::PointXYZ>::Ptr orig_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+      //pcl::PointCloud<pcl::PointXYZ>::Ptr orig_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
       pcl::fromROSMsg(*scanMsg , *orig_cloud);
       pcl::fromROSMsg(*scanMsg , *cloud_out);
@@ -73,7 +89,7 @@ class ICPProcess
       pcl::PointCloud<int> indices_out;
       pcl::UniformSampling<pcl::PointXYZ> uniform_sampling;
       uniform_sampling.setInputCloud (orig_cloud);
-      uniform_sampling.setRadiusSearch (0.05f);
+      uniform_sampling.setRadiusSearch (0.050f);
       //uniform_sampling.filter (*model_keypoints);
       uniform_sampling.compute (indices_out);
       std::cout << "Model total points: " << orig_cloud->size () << "; Selected Keypoints: " << indices_out.size () << std::endl;
@@ -104,6 +120,20 @@ class ICPProcess
       //cloud_in = cloud_out;
 
       first_time = false;
+
+      ros::Duration dur = ros::Time::now() - time_begin;
+      double ddur = dur.toNSec() * 1e-9;
+      std::cout << "Elapsed:" << ddur << std::endl;
+
+      // Obtain the transformation that aligned cloud_source to cloud_source_registered
+       Eigen::Matrix4f transformation = icp.getFinalTransformation ();
+
+
+      pcl::registration::TransformationValidationEuclidean<pcl::PointXYZ, pcl::PointXYZ> tve;
+      tve.setMaxRange (0.01);  // 1cm
+      tve.setThreshold (0.01);
+      double score = tve.validateTransformation (cloud_in, cloud_out, transformation);
+      std::cout << "Verify:" << score << " " << tve.isValid(cloud_in, cloud_out, transformation) << std::endl;
 
     }
 
