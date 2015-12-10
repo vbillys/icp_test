@@ -7,6 +7,7 @@
 #include <pcl_ros/point_cloud.h>
 
 #include "tf/message_filter.h"
+#include <tf/transform_broadcaster.h>
 #include "message_filters/subscriber.h"
 #include <sensor_msgs/PointCloud2.h>
 
@@ -19,6 +20,10 @@
 
 // include template implementations to transform a custom point cloud
 #include <pcl_ros/impl/transforms.hpp>
+
+#include "tf/transform_datatypes.h"
+#include "Eigen/Core"
+#include "Eigen/Geometry"
 
 /** types of point and cloud to work with */
 typedef velodyne_rawdata::VPoint VPoint;
@@ -38,6 +43,13 @@ class ICPProcess
     //pcl::PointCloud<pcl::PointXYZ> cloud_out ;//(new pcl::PointCloud<pcl::PointXYZ>);
 
     bool first_time;
+
+    Eigen::Matrix4d transformation_matrix;
+    Eigen::Matrix3d rot_matrix;
+    Eigen::Vector3d trans_vector;
+
+    tf::TransformBroadcaster tf_br_;
+    tf::Transform curr_transform;
 
   public:
     ICPProcess(ros::NodeHandle & nh)
@@ -59,6 +71,7 @@ class ICPProcess
       //pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointXYZ, pcl::PointXYZ,float>::Ptr trans_lls (new pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointXYZ, pcl::PointXYZ, float>);
       //icp.setTransformationEstimation (trans_lls);
 
+      curr_transform.setIdentity();
     }
     ~ICPProcess()
     {
@@ -109,9 +122,32 @@ class ICPProcess
 
 	std::cout << "has converged:" << icp.hasConverged() << " score: " <<
 	  icp.getFitnessScore() << std::endl;
-	std::cout << icp.getFinalTransformation() << std::endl;
+	//std::cout << icp.getFinalTransformation() << std::endl;
+	transformation_matrix = icp.getFinalTransformation ().cast<double>();
+	//trans_vector << transformation_matrix(0,3),transformation_matrix(1,3),transformation_matrix(2,3);
+	tf::Matrix3x3 tf3d;
+	tf3d.setValue(transformation_matrix(0,0),transformation_matrix(0,1),transformation_matrix(0,2)
+			   ,transformation_matrix(1,0),transformation_matrix(1,1),transformation_matrix(1,2)
+			   ,transformation_matrix(2,0),transformation_matrix(2,1),transformation_matrix(2,2)
+	    );
 
-	pub_.publish(Final);
+	 tf::Quaternion tfqt;
+	tf3d.getRotation(tfqt);
+	tf::Transform transform_;
+	transform_.setOrigin(tf::Vector3(transformation_matrix(0,3),transformation_matrix(1,3),transformation_matrix(2,3)));
+	transform_.setRotation(tfqt);
+	tf::StampedTransform transform;
+	//transform.setData(transform_);
+	transform.stamp_ = ros::Time::now();
+	transform.frame_id_ = std::string("world");//ros::Time::now();
+	transform.child_frame_id_ = std::string("velodyne");//ros::Time::now();
+	//tf_br_.sendTransform(transform);
+	curr_transform *= transform_;
+	transform.setData(curr_transform);
+	tf_br_.sendTransform(transform);
+
+
+	//pub_.publish(Final);
       }
 
       //pub_.publish(outMsg);

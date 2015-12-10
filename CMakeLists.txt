@@ -122,7 +122,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 ## Declare a cpp executable
  add_executable(icp_test_node src/icp_test_node.cpp)
- target_link_libraries(icp_test_node ${roscpp_LIBRARIES} ${PCL_LIBRARIES} 
+ target_link_libraries(icp_test_node ${roscpp_LIBRARIES} ${PCL_LIBRARIES} ${catkin_LIBRARIES}
 )
 
 ## Add cmake target dependencies of the executable/library
