@@ -4,26 +4,52 @@ project(icp_test)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+#find_package(catkin REQUIRED COMPONENTS
+  #angles
+  #pcl_conversions
+  #pcl_ros
+  #roscpp
+  #roslib
+  #rospy
+  #sensor_msgs
+  #std_msgs
+  #tf
+  ##velodyne
+  #velodyne_driver
+  #velodyne_msgs
+  #velodyne_pointcloud
+#)
+
 find_package(catkin REQUIRED COMPONENTS
-  angles
-  pcl_conversions
-  pcl_ros
-  roscpp
-  roslib
-  rospy
-  sensor_msgs
-  std_msgs
-  tf
-  #velodyne
-  velodyne_driver
-  velodyne_msgs
-  velodyne_pointcloud
-)
+	#angles
+	#pcl_conversions
+	#pcl_ros
+	#roscpp
+	#roslib
+	#rospy
+	#sensor_msgs
+	#std_msgs
+	tf
+	#velodyne
+	velodyne_driver
+	velodyne_msgs
+	velodyne_pointcloud
+	)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+unset(PCL_LIBRARIES CACHE)
+unset(Boost_INCLUDE_DIRS CACHE)
+unset(PCL_INCLUDE_DIRS CACHE)
+unset(PCL_DEFINITIONS CACHE)
+set(Boost_NO_SYSTEM_PATHS TRUE)
+set(Boost_INCLUDE_DIR "/home/avavav/Documents/workspace/INSTALLSPACE/boost_1_47_0/include")
 find_package(Boost)
+set(PCL_DIR "/home/avavav/Documents/workspace/INSTALLSPACE/pcl-1.7.2/share/pcl-1.8")
 find_package( PCL REQUIRED )
+
+#find_package(velodyne_pointcloud REQUIRED)
+#find_package(velodyne_driver REQUIRED)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -105,10 +131,15 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
+message(STATUS "${catkin_INCLUDE_DIRS}")
 include_directories(
-  ${catkin_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS}
-  ${PCL_INCLUDE_DIRS}
+	#${catkin_INCLUDE_DIRS}
+	#/home/avavav/Documents/catkin_ws_hydro/src/velodyne/velodyne_driver/include
+	#/home/avavav/Documents/catkin_ws_hydro/src/velodyne/velodyne_pointcloud/include
+	${PROJECT_SOURCE_DIR}/../velodyne/velodyne_driver/include
+	${PROJECT_SOURCE_DIR}/../velodyne/velodyne_pointcloud/include
+  #${Boost_INCLUDE_DIRS}
+	${PCL_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library
@@ -120,9 +151,22 @@ include_directories(
 link_directories(${PCL_LIBRARY_DIRS} src)
 add_definitions(${PCL_DEFINITIONS})
 
+#message(STATUS "${PCL_LIBRARIES} ${PCL_DEFINITIONS} ${PCL_LIBRARY_DIRS}")
+message(STATUS "${roscpp_LIBRARIES}")
+message(STATUS "${catkin_LIBRARIES}")
+
 ## Declare a cpp executable
  add_executable(icp_test_node src/icp_test_node.cpp)
- target_link_libraries(icp_test_node ${roscpp_LIBRARIES} ${PCL_LIBRARIES} ${catkin_LIBRARIES}
+ #target_link_libraries(icp_test_node ${roscpp_LIBRARIES} ${PCL_LIBRARIES} ${catkin_LIBRARIES}
+ #target_link_libraries(icp_test_node  ${PCL_LIBRARIES} ${catkin_LIBRARIES}
+ target_link_libraries(icp_test_node  ${PCL_LIBRARIES} /opt/ros/hydro/lib/libtf.so
+	 /opt/ros/hydro/lib/libtf2_ros.so
+	 #/opt/ros/hydro/lib/libroscpp.so
+	 ${PROJECT_SOURCE_DIR}/../roscpp/build/devel/lib/libroscpp.so
+	 /opt/ros/hydro/lib/librosconsole.so
+	 /opt/ros/hydro/lib/librostime.so
+	 /opt/ros/hydro/lib/libroscpp_serialization.so
+ #target_link_libraries(icp_test_node ${roscpp_LIBRARIES} #${catkin_LIBRARIES}
 )
 
 ## Add cmake target dependencies of the executable/library
