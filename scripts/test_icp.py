@@ -3,7 +3,7 @@ import rospy
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Header
 from roslib import message
-import math
+import math, numpy
 
 import xyz
 import re
@@ -31,16 +31,28 @@ def filter_points(msg):
 g_data_dir = '/home/avavav/Documents/workspace/3dtk/hannover1/'
 g_scale_factor = 0.01
 
-def read_xyz(fh, fh_pose):
-    content_pose = fh_pose.readlines()
+def extract_pose(content_pose):
     pose_trans_parsed = re.findall( r'\d+\.*\d*', content_pose[0])
     pose_rot_parsed   = re.findall( r'\d+\.*\d*', content_pose[1])
+    # print pose_rot_parsed, pose_trans_parsed
     x_pose = float(pose_trans_parsed[2])*g_scale_factor
     y_pose = -float(pose_trans_parsed[0])*g_scale_factor
     heading_deg = float(pose_rot_parsed[1])
-    # print pose_rot_parsed, pose_trans_parsed
     print x_pose, y_pose, heading_deg
     Rz = transformation.rotation_matrix(heading_deg*math.pi/180, [0,0,1])
+    return Rz, x_pose, y_pose 
+
+def extractCorrPose(content_pose):
+    t_parsed = re.findall( r'\d+\.*\d*', content_pose[-1])
+    t_parsed_floated = [ float(m) for m in t_parsed ]
+    t_parsed_numpy =  numpy.matrix(t_parsed_floated[0:16])
+    return numpy.reshape(t_parsed_numpy, (4, 4))
+    
+
+def read_xyz(fh, fh_pose):
+    content_pose = fh_pose.readlines()
+    # Rz, x_pose, y_pose = extract_pose(content_pose)
+    tranformation_matrix = extractCorrPose(content_pose)
     content = fh.readlines()
     cloud = []
     for s in content:
@@ -52,19 +64,36 @@ def read_xyz(fh, fh_pose):
 	# cloud.append(s_parsed_floated)
 
 	point  = [float(s_parsed[2])*g_scale_factor,-float(s_parsed[0])*g_scale_factor,float(s_parsed[1])*g_scale_factor]
-	point_t = Rz.dot([point[0], point[1], point[2], 0])
+	# point_t = Rz.dot([point[0], point[1], point[2], 0])
 	# print point_t
-	cloud.append([point_t[0]+x_pose, point_t[1]+y_pose, point_t[2]])
+	# cloud.append(point)
+	# cloud.append([point_t[0]+x_pose, point_t[1]+y_pose, point_t[2]])
+	# cloud.append([point_t[0], point_t[1], point_t[2]])
+	cloud.append([point[0], point[1], point[2], 0])
+
+    # point_t = tranformation_matrix.dot([point[0], point[1], point[2], 0])
+    cloud_matrix = numpy.matrix(cloud)#.reshape((len(content),4))
+
+    point_t = tranformation_matrix.dot(cloud_matrix.getT())
+    point_t = point_t.getT().tolist()
+    # point_t=point_t[0]
+    # print point_t
+
+    cloud_out = []
+    for row in point_t:
+	cloud_out.append([row[0], row[1], row[2]])
 
 	# print s, s_parsed, s_parsed_floated
 
     # return s_parsed_floated
-    return cloud
+    # return cloud
+    return cloud_out
 
 
 def publish_xyz (filename):
     fullfilename_cloud = g_data_dir + filename + '.3d'
-    fullfilename_pose  = g_data_dir + filename + '.pose'
+    # fullfilename_pose  = g_data_dir + filename + '.pose'
+    fullfilename_pose  = g_data_dir + filename + '.frames'
     fh = open(fullfilename_cloud, 'r')
     fh_pose = open(fullfilename_pose, 'r')
     cloud = read_xyz(fh, fh_pose)
@@ -82,15 +111,15 @@ def publish_xyz (filename):
 def talker():
 
     rate = rospy.Rate(10)
-    counter_index = 0
+    counter_index = 1
     while not rospy.is_shutdown():
 
 	file_string = 'scan'+format(counter_index,'03d')
 	publish_xyz (file_string)
 	print file_string
 	counter_index = counter_index + 1
-	if counter_index > 468:
-	    counter_index = 0
+	if counter_index > 65 :# 468:
+	    counter_index = 1
 	rate.sleep()
 
     # rospy.spin()
