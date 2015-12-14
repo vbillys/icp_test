@@ -37,30 +37,29 @@ g = gl.GLGridItem()
 w.addItem(g)
 
 
-##
-##  First example is a set of points with pxMode=False
-##  These demonstrate the ability to have points with real size down to a very small scale 
-## 
-pos = np.empty((53, 3))
-size = np.empty((53))
-color = np.empty((53, 4))
-pos[0] = (1,0,0); size[0] = 0.5;   color[0] = (1.0, 0.0, 0.0, 0.5)
-pos[1] = (0,1,0); size[1] = 0.2;   color[1] = (0.0, 0.0, 1.0, 0.5)
-pos[2] = (0,0,1); size[2] = 2./3.; color[2] = (0.0, 1.0, 0.0, 0.5)
+# ##
+# ##  First example is a set of points with pxMode=False
+# ##  These demonstrate the ability to have points with real size down to a very small scale 
+# ## 
+# pos = np.empty((53, 3))
+# size = np.empty((53))
+# color = np.empty((53, 4))
+# pos[0] = (1,0,0); size[0] = 0.5;   color[0] = (1.0, 0.0, 0.0, 0.5)
+# pos[1] = (0,1,0); size[1] = 0.2;   color[1] = (0.0, 0.0, 1.0, 0.5)
+# pos[2] = (0,0,1); size[2] = 2./3.; color[2] = (0.0, 1.0, 0.0, 0.5)
 
-z = 0.5
-d = 6.0
-for i in range(3,53):
-    pos[i] = (0,0,z)
-    size[i] = 2./d
-    color[i] = (0.0, 1.0, 0.0, 0.5)
-    z *= 0.5
-    d *= 2.0
+# z = 0.5
+# d = 6.0
+# for i in range(3,53):
+    # pos[i] = (0,0,z)
+    # size[i] = 2./d
+    # color[i] = (0.0, 1.0, 0.0, 0.5)
+    # z *= 0.5
+    # d *= 2.0
 
-sp1 = gl.GLScatterPlotItem(pos=pos, size=size, color=color, pxMode=False)
-sp1.translate(5,5,0)
-w.addItem(sp1)
-
+# sp1 = gl.GLScatterPlotItem(pos=pos, size=size, color=color, pxMode=False)
+# sp1.translate(5,5,0)
+# w.addItem(sp1)
 
 
 def filter_points(msg):
@@ -284,18 +283,39 @@ def talker():
 	cloud = cloud + cloud_new
 	print file_string
 	counter_index = counter_index + 1
+
+	pcloud = PointCloud2()
+	header = Header()
+	header.stamp = rospy.Time.now()
+	header.frame_id = 'velodyne'
+	pcloud = pc2.create_cloud_xyz32(header, cloud)
+	pub_cloud.publish(pcloud)
+
 	if counter_index > 65: #65: # 20 :#65 :# 468:
 	    break
 	    counter_index = 1
 	rate.sleep()
 
-    pcloud = pc2.create_cloud_xyz32(header, cloud)
-    print pcloud.header, pcloud.height, pcloud.width, pcloud.point_step, pcloud.row_step, pcloud.fields
-    pub_cloud.publish(pcloud)
+    # pcloud = pc2.create_cloud_xyz32(header, cloud)
+    # print pcloud.header, pcloud.height, pcloud.width, pcloud.point_step, pcloud.row_step, pcloud.fields
+    # pub_cloud.publish(pcloud)
+
     # rospy.spin()
     
-    # if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-	# QtGui.QApplication.instance().exec_()
+    # pos = np.random.random(size=(100,3))
+    # print cloud
+    pos = np.matrix(cloud)
+    # pos *= [10,-10,10]
+    # pos[0] = (0,0,0)
+    # color = np.ones((pos.shape[0], 4))
+    # d2 = (pos**2).sum(axis=1)**0.5
+    # size = np.random.random(size=pos.shape[0])*10
+    size = np.ones((1,pos.shape[0]))
+    sp2 = gl.GLScatterPlotItem(pos=pos, color=(1,1,1,1), size=size)
+    w.addItem(sp2)
+
+    if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+	QtGui.QApplication.instance().exec_()
 
 
 rospy.Subscriber('velodyne_points', PointCloud2, filter_points)
