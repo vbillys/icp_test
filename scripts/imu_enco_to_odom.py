@@ -18,18 +18,20 @@ def normalizeHeading(angle_rad):
     return angle_rad
 
 class ImuEnco2Odom:
-    def __init__(self, dist_to_meter):
+    def __init__(self, dist_to_meter, dist_thres):
 	rospy.init_node('imu_enco_to_odom', anonymous=False)
 	rospy.Subscriber('imu/data', Imu, self.processImuMsg)
 	rospy.Subscriber('encoder_odom', Odometry, self.processOdomMsg)
 	rospy.Subscriber('velodyne_points', PointCloud2, self.processVeloMsg)
 	self.repub_velo = rospy.Publisher('velotime_points', PointCloud2)
 	self.dist_to_meter = dist_to_meter
+	self.dist_thres_for_adding_data = dist_thres
 	self.heading_rad = 0
 	self.x_pose = 0
 	self.y_pose = 0
 	self.dist   = 0
 	self.dist_accum   = 0
+	self.dist_accum_last = 0
 	self.last_odom = 0
 	self.init = False
 	self.init_velo = True
@@ -53,7 +55,10 @@ class ImuEnco2Odom:
 	msg.header.stamp = rospy.Time.now()
 	msg.header.frame_id = 'odom'
 	# cloud_out = do_transform_cloud(msg, trans_velo)
-	self.repub_velo.publish(msg)
+	if self.dist_accum >= self.dist_accum_last + self.dist_thres_for_adding_data or self.init_velo:
+	    self.repub_velo.publish(msg)
+	    self.dist_accum_last = self.dist_accum
+	    self.init_velo = False
     def processImuMsg(self, msg):
 	# print msg.angular_velocity.z
 	self.heading_rad = self.heading_rad + msg.angular_velocity.z*.01
@@ -75,7 +80,7 @@ class ImuEnco2Odom:
 	# print -msg.twist.twist.linear.x
 	curr_odom = -msg.twist.twist.linear.x
 	
-	if self.init and self.init_velo:
+	if self.init:
 	    self.dist = (curr_odom - self.last_odom) * self.dist_to_meter
 	    self.x_pose = self.x_pose - self.dist*math.sin(self.heading_rad)
 	    self.y_pose = self.y_pose + self.dist*math.cos(self.heading_rad)
@@ -84,13 +89,17 @@ class ImuEnco2Odom:
 	    self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'odom', "world")
 	    # self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), self.velostamp, 'odom', "velodyne")
 	    # self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'world', "odom")
+	else:
+	    self.pub_br.sendTransform((0 , 0 ,0), tf.transformations.quaternion_from_euler(0,0,0), rospy.Time.now(), 'odom', "world")
+
 
 	self.last_odom = curr_odom
 	self.init = True
 	pass
 
 g_dist_to_meter = 1./2700
+g_dist_thres = .1#1#5#2
 if __name__ == '__main__':
-    odom = ImuEnco2Odom(g_dist_to_meter)
+    odom = ImuEnco2Odom(g_dist_to_meter, g_dist_thres)
     odom.run()
 

@@ -76,7 +76,8 @@ def filter_points(msg):
     print msg.row_step
     print msg.is_dense
 
-g_data_dir = '/home/avavav/Documents/workspace/3dtk/hannover1/'
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/hannover1/'
+g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtc3/'
 g_scale_factor = 0.01
 g_trans_matrix = transformation.identity_matrix()
 
@@ -243,6 +244,7 @@ def read_xyz(fh, fh_frame, fh_pose, cnt):
 
     # return s_parsed_floated
     # return cloud
+    # print cloud_out
     return cloud_out
 
 
@@ -270,7 +272,7 @@ def publish_xyz (filename, cnt):
 def talker():
 
     rate = rospy.Rate(3)
-    counter_index = 1#30#x1
+    counter_index = 21#30#x1
     pcloud = PointCloud2()
     header = Header()
     header.stamp = rospy.Time.now()
@@ -291,7 +293,7 @@ def talker():
 	pcloud = pc2.create_cloud_xyz32(header, cloud)
 	pub_cloud.publish(pcloud)
 
-	if counter_index > 65: #65: # 20 :#65 :# 468:
+	if counter_index > 47:#91:#65:#19 :#65: #65: # 20 :#65 :# 468:
 	    break
 	    counter_index = 1
 	rate.sleep()
