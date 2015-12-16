@@ -82,8 +82,12 @@ class ImuEnco2Odom:
 	
 	if self.init:
 	    self.dist = (curr_odom - self.last_odom) * self.dist_to_meter
-	    self.x_pose = self.x_pose - self.dist*math.sin(self.heading_rad)
-	    self.y_pose = self.y_pose + self.dist*math.cos(self.heading_rad)
+	    # for miev with velo32
+	    # self.x_pose = self.x_pose - self.dist*math.sin(self.heading_rad)
+	    # self.y_pose = self.y_pose + self.dist*math.cos(self.heading_rad)
+	    # for coms2
+	    self.x_pose = self.x_pose + self.dist*math.cos(self.heading_rad)
+	    self.y_pose = self.y_pose + self.dist*math.sin(self.heading_rad)
 	    self.dist_accum = self.dist_accum + self.dist
 	    # print self.x_pose, self.y_pose , self.dist_accum
 	    self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'odom', "world")
@@ -97,8 +101,8 @@ class ImuEnco2Odom:
 	self.init = True
 	pass
 
-g_dist_to_meter = 1./2700
-g_dist_thres = .1#1#5#2
+g_dist_to_meter = 1./3000#1./2700 - for miev, 1./3000 for coms2
+g_dist_thres = 2.5#.1#1#5#2
 if __name__ == '__main__':
     odom = ImuEnco2Odom(g_dist_to_meter, g_dist_thres)
     odom.run()

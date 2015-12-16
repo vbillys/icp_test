@@ -77,7 +77,8 @@ def filter_points(msg):
     print msg.is_dense
 
 # g_data_dir = '/home/avavav/Documents/workspace/3dtk/hannover1/'
-g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtc3/'
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtc3/'
+g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtcpark2/'
 g_scale_factor = 0.01
 g_trans_matrix = transformation.identity_matrix()
 

@@ -76,7 +76,8 @@ class Bag2UosConverter:
 
 
 # g_root_dir = '/home/avavav/Documents/workspace/3dtk/velo16/'
-g_root_dir = '/home/avavav/Documents/workspace/3dtk/jtc3/'
+# g_root_dir = '/home/avavav/Documents/workspace/3dtk/jtc3/'
+g_root_dir = '/home/avavav/Documents/workspace/3dtk/jtcpark2/'
 g_scale_factor = 100
 if __name__ == '__main__':
     converter = Bag2UosConverter(g_root_dir, g_scale_factor)
