@@ -9,6 +9,9 @@ from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import Transform
 from geometry_msgs.msg import TransformStamped
 
+f_handle = open('odom_log_infuse.csv','w')
+# f_handle = open('odom_log_infuse_1.csv','w')
+# f_handle = open('odom_log_infuse_2.csv','w')
 
 def normalizeHeading(angle_rad):
     while angle_rad < 0:
@@ -38,7 +41,11 @@ class ImuEnco2Odom:
 	self.pub_br = tf.TransformBroadcaster()
 
     def run(self):
-	rospy.spin()
+	try:
+	    rospy.spin()
+	except rospy.ROSInterruptException:
+	    f_handle.close()
+	pass
     def processVeloMsg(self, msg):
 	# self.velostamp = msg.header.stamp
 	# self.init_velo = True
@@ -80,6 +87,7 @@ class ImuEnco2Odom:
 	# print -msg.twist.twist.linear.x
 	curr_odom = -msg.twist.twist.linear.x
 	
+	str_ = ''
 	if self.init:
 	    self.dist = (curr_odom - self.last_odom) * self.dist_to_meter
 	    # for miev with velo32
@@ -88,7 +96,15 @@ class ImuEnco2Odom:
 	    # for coms2
 	    self.x_pose = self.x_pose + self.dist*math.cos(self.heading_rad)
 	    self.y_pose = self.y_pose + self.dist*math.sin(self.heading_rad)
-	    self.dist_accum = self.dist_accum + self.dist
+
+	    str_ = str_ + format(self.x_pose,'.3f') + ' '
+	    str_ = str_ + format(self.y_pose,'.3f') + ' '
+	    str_ = str_ + format(self.heading_rad,'.5f') + ' '
+	    str_ = str_ + '\n'
+	    f_handle.write(str_)
+
+	    # self.dist_accum = self.dist_accum + self.dist
+	    self.dist_accum = self.dist_accum + abs(self.dist)
 	    # print self.x_pose, self.y_pose , self.dist_accum
 	    self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'odom', "world")
 	    # self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), self.velostamp, 'odom', "velodyne")
@@ -101,9 +117,11 @@ class ImuEnco2Odom:
 	self.init = True
 	pass
 
-g_dist_to_meter = 1./3000#1./2700 - for miev, 1./3000 for coms2
+# g_dist_to_meter = 1./3000#1./2700 - for miev, 1./3000 for coms2
+g_dist_to_meter = 1. #1./3000#1./2700 - for miev, 1./3000 for coms2
 g_dist_thres = 2.5#.1#1#5#2
 if __name__ == '__main__':
     odom = ImuEnco2Odom(g_dist_to_meter, g_dist_thres)
     odom.run()
+    
 
