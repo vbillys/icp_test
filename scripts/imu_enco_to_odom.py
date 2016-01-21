@@ -9,8 +9,8 @@ from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import Transform
 from geometry_msgs.msg import TransformStamped
 
-f_handle = open('odom_log_infuse.csv','w')
-# f_handle = open('odom_log_infuse_1.csv','w')
+# f_handle = open('odom_log_infuse.csv','w')
+f_handle = open('odom_log_infuse_1.csv','w')
 # f_handle = open('odom_log_infuse_2.csv','w')
 
 def normalizeHeading(angle_rad):
@@ -85,7 +85,9 @@ class ImuEnco2Odom:
 	pass
     def processOdomMsg(self, msg):
 	# print -msg.twist.twist.linear.x
-	curr_odom = -msg.twist.twist.linear.x
+	# curr_odom = -msg.twist.twist.linear.x
+	# for mobile base ONLY BACKWARD
+	curr_odom = msg.twist.twist.linear.x
 	
 	str_ = ''
 	if self.init:
@@ -119,7 +121,7 @@ class ImuEnco2Odom:
 
 # g_dist_to_meter = 1./3000#1./2700 - for miev, 1./3000 for coms2
 g_dist_to_meter = 1. #1./3000#1./2700 - for miev, 1./3000 for coms2
-g_dist_thres = 2.5#.1#1#5#2
+g_dist_thres = .5#2.5#.1#1#5#2
 if __name__ == '__main__':
     odom = ImuEnco2Odom(g_dist_to_meter, g_dist_thres)
     odom.run()
