@@ -42,8 +42,9 @@ unset(PCL_LIBRARIES CACHE)
 unset(Boost_INCLUDE_DIRS CACHE)
 unset(PCL_INCLUDE_DIRS CACHE)
 unset(PCL_DEFINITIONS CACHE)
-set(Boost_NO_SYSTEM_PATHS TRUE)
-set(Boost_INCLUDE_DIR "/home/avavav/Documents/workspace/INSTALLSPACE/boost_1_47_0/include")
+#set(Boost_NO_SYSTEM_PATHS TRUE)
+#set(Boost_INCLUDE_DIR "/home/avavav/Documents/workspace/INSTALLSPACE/boost_1_47_0/include")
+ #find_package(Boost REQUIRED COMPONENTS thread system)
 find_package(Boost)
 set(PCL_DIR "/home/avavav/Documents/workspace/INSTALLSPACE/pcl-1.7.2/share/pcl-1.8")
 find_package( PCL REQUIRED )
@@ -138,8 +139,9 @@ include_directories(
 	#/home/avavav/Documents/catkin_ws_hydro/src/velodyne/velodyne_pointcloud/include
 	${PROJECT_SOURCE_DIR}/../velodyne/velodyne_driver/include
 	${PROJECT_SOURCE_DIR}/../velodyne/velodyne_pointcloud/include
-  #${Boost_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
+	/home/avavav/Downloads/IbeoSDK2.11.1/src
 )
 
 ## Declare a cpp library
@@ -156,18 +158,26 @@ message(STATUS "${roscpp_LIBRARIES}")
 message(STATUS "${catkin_LIBRARIES}")
 
 ## Declare a cpp executable
- add_executable(icp_test_node src/icp_test_node.cpp)
+ #add_executable(icp_test_node src/icp_test_node.cpp)
  #target_link_libraries(icp_test_node ${roscpp_LIBRARIES} ${PCL_LIBRARIES} ${catkin_LIBRARIES}
  #target_link_libraries(icp_test_node  ${PCL_LIBRARIES} ${catkin_LIBRARIES}
- target_link_libraries(icp_test_node  ${PCL_LIBRARIES} /opt/ros/hydro/lib/libtf.so
-	 /opt/ros/hydro/lib/libtf2_ros.so
-	 #/opt/ros/hydro/lib/libroscpp.so
-	 ${PROJECT_SOURCE_DIR}/../roscpp/build/devel/lib/libroscpp.so
-	 /opt/ros/hydro/lib/librosconsole.so
-	 /opt/ros/hydro/lib/librostime.so
-	 /opt/ros/hydro/lib/libroscpp_serialization.so
- #target_link_libraries(icp_test_node ${roscpp_LIBRARIES} #${catkin_LIBRARIES}
-)
+ #target_link_libraries(icp_test_node  ${PCL_LIBRARIES} /opt/ros/hydro/lib/libtf.so
+	 #/opt/ros/hydro/lib/libtf2_ros.so
+	 ##/opt/ros/hydro/lib/libroscpp.so
+	 #${PROJECT_SOURCE_DIR}/../roscpp/build/devel/lib/libroscpp.so
+	 #/opt/ros/hydro/lib/librosconsole.so
+	 #/opt/ros/hydro/lib/librostime.so
+	 #/opt/ros/hydro/lib/libroscpp_serialization.so
+ ##target_link_libraries(icp_test_node ${roscpp_LIBRARIES} #${catkin_LIBRARIES}
+#)
+
+add_executable(ibeo_file_read src/ibeo_file_read.cpp)
+target_link_libraries(ibeo_file_read /home/avavav/Downloads/IbeoSDK2.11.1/libs/libibeosdk_d.so-2.11.1
+	rt
+	${Boost_SYSTEM_LIBRARY}
+	${Boost_THREAD_LIBRARY}
+	${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+	)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
