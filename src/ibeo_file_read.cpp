@@ -40,7 +40,7 @@
 typedef velodyne_rawdata::VPoint VPoint;
 typedef velodyne_rawdata::VPointCloud VPointCloud;
 
-ros::Publisher  pub;
+ros::Publisher  pub, pub_top, pub_bottom;
 
 //======================================================================
 
@@ -72,6 +72,9 @@ void file_demo(const std::string& filename);
 TimeConversion tc;
 
 //======================================================================
+
+//VPointCloud::Ptr point_cloud_total=NULL;
+//VPointCloud::Ptr point_cloud_total;
 
 class AllListener : public ibeo::DataListener<FrameEndSeparator>,
                     public ibeo::DataListener<ScanLux>,
@@ -113,7 +116,7 @@ public:
 				<< "  ScanStart: " << tc.toString(scan->getStartTimestamp().toPtime())
 				<< std::endl;
 	}
-
+	//static VPointCloud::Ptr point_cloud_total=NULL;
 	//========================================
 	void onData(const ScanEcu* const scan)
 	{
@@ -123,11 +126,27 @@ public:
 				//<< "  ScanStart: " << tc.toString(scan->getStartTimestamp().toPtime(), 3)
 				//<< std::endl;
 	    //usleep(35000); //std::cout << scan->getEndTimeOffset()<< std::endl;
+	    //if (scan->getScanNumber() % 2) 
+	    //{}
+	      ////return; // top layers only
+	    //else return; // bottom layers only
+	    //if (!(scan->getScanNumber() % 2)) return;
+	    static bool _first = true;
+	    static VPointCloud::Ptr point_cloud_total(new VPointCloud());
 	    ros::Rate r(32);r.sleep();
 	    VPointCloud::Ptr outMsg(new VPointCloud());
 	    outMsg->header.stamp = scan->getStartTimestamp().getTime();//ros::Time::now();
 	    outMsg->header.frame_id = "ibeo";//"filtered_velodyne";
 	    outMsg->height = 1;
+	    if (_first){
+	      //point_cloud_total =  new VPointCloud();
+	      point_cloud_total->header.stamp = scan->getStartTimestamp().getTime();//ros::Time::now();
+	      point_cloud_total->header.frame_id = "ibeo";//"filtered_velodyne";
+	      point_cloud_total->height = 1;
+	      point_cloud_total->points.clear();
+	      _first = false;
+
+	    }
 		//printf(" No. of ScannerInfos: %d No. of ScanPoints: %d\n" , scan->getNumberOfScannerInfos() , scan->getNumberOfScanPoints());
 		//printf(" Device IDs: ");
 		//for (int _ii = 0; _ii < scan->getNumberOfScannerInfos() ; _ii++) printf(" %d %d", scan->getScannerInfos()[_ii].getDeviceId(), scan->getScannerInfos()[_ii].getFlags());
@@ -150,17 +169,74 @@ public:
 
 
         //for (int _ii = 0; _ii < scan->getNumberOfScanPoints() ; _ii++) printf(" %d %.3f", scan->getScanPoints()[_ii].getLayer(), scan->getScanPoints()[_ii].getPositionZ());
+	bool top = false;
         for (int _ii = 0; _ii < scan->getNumberOfScanPoints() ; _ii++) 
 	{
+	  if (scan->getScanPoints()[_ii].getFlags() & ScanPointEcu::ESPF_MaskInvalid) continue;
+	  if (scan->getScanPoints()[_ii].getFlags() & ScanPointEcu::ESPF_Transparent) continue;
+	  if (scan->getScanPoints()[_ii].getEcho() > 0 ) continue;
 	  velodyne_pointcloud::PointXYZIR _point_new;
 	  _point_new.ring = 0;
 	  _point_new.intensity = scan->getScanPoints()[_ii].getLayer();//0;
 	  _point_new.x    = scan->getScanPoints()[_ii].getPositionX();
 	  _point_new.y    = scan->getScanPoints()[_ii].getPositionY();
 	  _point_new.z    = scan->getScanPoints()[_ii].getPositionZ();
+	  if (scan->getScanPoints()[_ii].getLayer() >3) 
+	  //{}
+	  {top = true;}//break;}
+	  //else break;
 	  outMsg->push_back(_point_new);
 	}
-        pub.publish(outMsg);
+	if (top)
+	{
+	  //point_cloud_total->points.insert(point_cloud_total->points.end(), outMsg->points.begin(), outMsg->points.end());
+	  for (int _j = 0; _j < outMsg->size(); _j++)
+	  {
+	    velodyne_pointcloud::PointXYZIR _point_new;
+	    _point_new.ring = 0;
+	    _point_new.intensity = outMsg->points[_j].intensity;//0;
+	    _point_new.x    = outMsg->points[_j].x;
+	    _point_new.y    = outMsg->points[_j].y;
+	    _point_new.z    = outMsg->points[_j].z;
+	    point_cloud_total->push_back(_point_new);
+	  }
+	  pub_top.publish(outMsg);
+
+
+	  point_cloud_total->header.stamp = scan->getStartTimestamp().getTime();//ros::Time::now();
+	  point_cloud_total->header.frame_id = "ibeo";//"filtered_velodyne";
+	  point_cloud_total->height = 1;
+	  pub.publish(point_cloud_total);
+	}
+	else{
+	  //point_cloud_total =  new VPointCloud();
+	  point_cloud_total->header.stamp = scan->getStartTimestamp().getTime();//ros::Time::now();
+	  point_cloud_total->header.frame_id = "ibeo";//"filtered_velodyne";
+	  point_cloud_total->height = 1;
+	  point_cloud_total->points.clear();
+	  //point_cloud_total->points.insert(point_cloud_total->points.end(), outMsg->points.begin(), outMsg->points.end());
+	  ////for (int _j = 0; _j < point_cloud_total.points.size(); _j++)
+	  for (int _j = 0; _j < outMsg->size(); _j++)
+	  {
+	    velodyne_pointcloud::PointXYZIR _point_new;
+	    _point_new.ring = 0;
+	    //_point_new.intensity = point_cloud_total.points[_j].intensity;//0;
+	    //_point_new.x    = point_cloud_total.points[_j].x;
+	    //_point_new.y    = point_cloud_total.points[_j].y;
+	    //_point_new.z    = point_cloud_total.points[_j].z;
+	    //outMsg->push_back(_point_new);
+	    _point_new.intensity = outMsg->points[_j].intensity;//0;
+	    _point_new.x    = outMsg->points[_j].x;
+	    _point_new.y    = outMsg->points[_j].y;
+	    _point_new.z    = outMsg->points[_j].z;
+	    point_cloud_total->push_back(_point_new);
+	  }
+
+	  pub_bottom.publish(outMsg);
+	  //pub.publish(outMsg);
+
+	}
+
         //if (scan->getScanPoints()[_ii].getLayer() == 0)
           //printf(" %d %.3f %.3f %.3f", scan->getScanPoints()[_ii].getLayer()
           //, scan->getScanPoints()[_ii].getPositionX()
@@ -423,6 +499,8 @@ int main(const int argc, const char** argv)
 	ros::init(_argc, _argv, "publish_ibeo_from_file");
 	ros::NodeHandle nh;//("~");
 	pub = nh.advertise<sensor_msgs::PointCloud2>( "ibeo_points", 1);
+	pub_top = nh.advertise<sensor_msgs::PointCloud2>( "ibeo_points_top", 1);
+	pub_bottom = nh.advertise<sensor_msgs::PointCloud2>( "ibeo_points_bottom", 1);
 
 	std::cerr << argv[0] << " Version " << appVersion.toString();
 	std::cerr << "  using IbeoSDK " << ibeoSDK.getVersion().toString() << std::endl;
