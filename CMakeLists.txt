@@ -52,6 +52,7 @@ find_package( PCL REQUIRED )
 #find_package(velodyne_pointcloud REQUIRED)
 #find_package(velodyne_driver REQUIRED)
 
+find_package(MRPT REQUIRED slam;vision;gui;topography)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -178,6 +179,9 @@ target_link_libraries(ibeo_file_read /home/avavav/Downloads/IbeoSDK2.11.1/libs/l
 	${Boost_THREAD_LIBRARY}
 	${roscpp_LIBRARIES} ${catkin_LIBRARIES}
 	)
+
+add_executable(test_node src/test.cpp)
+target_link_libraries(test_node ${MRPT_LIBS})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
