@@ -221,6 +221,7 @@ CSimplePointsMap		g_m1,g_m2;
 //CSimplePointsMap		*g_m1,*g_m2;
 //boost::shared_ptr<CSimplePointsMap>		g_m1,g_m2;
 CICP					ICP;
+CPose2D g_icp_result(0.0f,0.0f,(float)DEG2RAD(0.0f));;
 void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
 {
   float					runningTime;
@@ -272,7 +273,10 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     cout << " std(phi): " << RAD2DEG(sqrt( gPdf.cov(2,2) )) << " (deg)" << endl;
 
     mrpt::math::CVectorDouble icp_result;
-    pdf->getMeanVal().getAsVector(icp_result);
+    //pdf->getMeanVal().getAsVector(icp_result);
+    g_icp_result = g_icp_result + pdf->getMeanVal();
+
+    g_icp_result.getAsVector(icp_result);
     geometry_msgs::PoseWithCovarianceStamped pose_tobe_published;
     pose_tobe_published.pose.pose.position.x = icp_result[0];
     pose_tobe_published.pose.pose.position.y = icp_result[1];
