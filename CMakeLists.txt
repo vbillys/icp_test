@@ -46,7 +46,7 @@ unset(PCL_DEFINITIONS CACHE)
 #set(Boost_INCLUDE_DIR "/home/avavav/Documents/workspace/INSTALLSPACE/boost_1_47_0/include")
  #find_package(Boost REQUIRED COMPONENTS thread system)
 find_package(Boost)
-set(PCL_DIR "/home/avavav/Documents/workspace/INSTALLSPACE/pcl-1.7.2/share/pcl-1.8")
+#set(PCL_DIR "/home/avavav/Documents/workspace/INSTALLSPACE/pcl-1.7.2/share/pcl-1.8")
 find_package( PCL REQUIRED )
 
 #find_package(velodyne_pointcloud REQUIRED)
@@ -181,7 +181,9 @@ target_link_libraries(ibeo_file_read /home/avavav/Downloads/IbeoSDK2.11.1/libs/l
 	)
 
 add_executable(test_node src/test.cpp)
-target_link_libraries(test_node ${MRPT_LIBS})
+target_link_libraries(test_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  )
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
