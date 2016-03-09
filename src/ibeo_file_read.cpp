@@ -36,6 +36,15 @@
 // include template implementations to transform a custom point cloud
 #include <pcl_ros/impl/transforms.hpp>
 
+
+#include "pointmatcher/PointMatcher.h"
+#include "pointmatcher_ros/point_cloud.h"
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+using namespace PointMatcherSupport;
+typedef PointMatcher<float> PM;
+typedef PM::DataPoints DP;
+
 /** types of point and cloud to work with */
 typedef velodyne_rawdata::VPoint VPoint;
 typedef velodyne_rawdata::VPointCloud VPointCloud;
@@ -120,11 +129,11 @@ public:
 	//========================================
 	void onData(const ScanEcu* const scan)
 	{
-		//logInfo << std::setw(5) << scan->getSerializedSize() << " Bytes  "
-				//<< "ScanEcu received: # " << scan->getScanNumber()
-				//<< "  #Pts: " << scan->getNumberOfScanPoints()
-				//<< "  ScanStart: " << tc.toString(scan->getStartTimestamp().toPtime(), 3)
-				//<< std::endl;
+		logInfo << std::setw(5) << scan->getSerializedSize() << " Bytes  "
+				<< "ScanEcu received: # " << scan->getScanNumber()
+				<< "  #Pts: " << scan->getNumberOfScanPoints()
+				<< "  ScanStart: " << tc.toString(scan->getStartTimestamp().toPtime(), 3)
+				<< std::endl;
 	    //usleep(35000); //std::cout << scan->getEndTimeOffset()<< std::endl;
 	    //if (scan->getScanNumber() % 2) 
 	    //{}
@@ -136,11 +145,13 @@ public:
 	    ros::Rate r(32);r.sleep();
 	    VPointCloud::Ptr outMsg(new VPointCloud());
 	    outMsg->header.stamp = scan->getStartTimestamp().getTime();//ros::Time::now();
+	    //outMsg->header.stamp = ros::Time::now();
 	    outMsg->header.frame_id = "ibeo";//"filtered_velodyne";
 	    outMsg->height = 1;
 	    if (_first){
 	      //point_cloud_total =  new VPointCloud();
 	      point_cloud_total->header.stamp = scan->getStartTimestamp().getTime();//ros::Time::now();
+	      //point_cloud_total->header.stamp = ros::Time::now();
 	      point_cloud_total->header.frame_id = "ibeo";//"filtered_velodyne";
 	      point_cloud_total->height = 1;
 	      point_cloud_total->points.clear();
@@ -180,7 +191,8 @@ public:
 	  _point_new.intensity = scan->getScanPoints()[_ii].getLayer();//0;
 	  _point_new.x    = scan->getScanPoints()[_ii].getPositionX();
 	  _point_new.y    = scan->getScanPoints()[_ii].getPositionY();
-	  _point_new.z    = scan->getScanPoints()[_ii].getPositionZ();
+	  //_point_new.z    = scan->getScanPoints()[_ii].getPositionZ();
+	  _point_new.z    = 0 ;//scan->getScanPoints()[_ii].getPositionZ();
 	  if (scan->getScanPoints()[_ii].getLayer() >3) 
 	  //{}
 	  {top = true;}//break;}
@@ -204,9 +216,13 @@ public:
 
 
 	  point_cloud_total->header.stamp = scan->getStartTimestamp().getTime();//ros::Time::now();
+	  //point_cloud_total->header.stamp = ros::Time::now();
 	  point_cloud_total->header.frame_id = "ibeo";//"filtered_velodyne";
 	  point_cloud_total->height = 1;
 	  pub.publish(point_cloud_total);
+	  sensor_msgs::PointCloud2 point_cloud_total_pcl;//(new PointCloud());
+	  pcl::toROSMsg(*point_cloud_total, point_cloud_total_pcl);
+	  DP cloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(point_cloud_total_pcl));
 	}
 	else{
 	  //point_cloud_total =  new VPointCloud();
@@ -557,6 +573,9 @@ void file_demo(const std::string& filename)
 		//file.registerListener(dynamic_cast<DataListener<ObjectListScala2271>*>(&allListener));
 		//file.registerListener(dynamic_cast<DataListener<ObjectListScala>*>(&allListener));
 		file.registerListener(dynamic_cast<DataListener<ScanEcu>*>(&allListener));
+		//file.registerListener(dynamic_cast<DataListener<VehicleStateBasicLux>*>(&allListener));
+		//file.registerListener(dynamic_cast<DataListener<VehicleStateBasicEcu2806>*>(&allListener));
+		file.registerListener(dynamic_cast<DataListener<VehicleStateBasicEcu>*>(&allListener));
 		//file.registerListener(dynamic_cast<DataListener<ScanEcu>*>(&allListener));
 		/*
 		file.registerListener(dynamic_cast<DataListener<FrameEndSeparator>*>(&allListener));

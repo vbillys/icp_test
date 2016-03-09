@@ -34,6 +34,10 @@
 #include <pcl/point_types.h>
 #include <math.h>
 
+#include "pointmatcher/PointMatcher.h"
+#include <cassert>
+#include <iostream>
+#include <fstream>
 
 /** types of point and cloud to work with */
 typedef velodyne_rawdata::VPoint VPoint;
@@ -49,6 +53,11 @@ using namespace mrpt::obs;
 using namespace mrpt::math;
 using namespace mrpt::poses;
 using namespace std;
+using namespace PointMatcherSupport;
+
+
+typedef PointMatcher<float> PM;
+typedef PM::DataPoints DP;
 
 bool skip_window=false;
 int  ICP_method = (int) icpClassic;

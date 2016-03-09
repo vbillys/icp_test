@@ -34,6 +34,7 @@ find_package(catkin REQUIRED COMPONENTS
 	velodyne_driver
 	velodyne_msgs
 	velodyne_pointcloud
+	libpointmatcher_ros
 	)
 
 ## System dependencies are found with CMake's conventions
@@ -53,6 +54,7 @@ find_package( PCL REQUIRED )
 #find_package(velodyne_driver REQUIRED)
 
 find_package(MRPT REQUIRED slam;vision;gui;topography)
+find_package(libpointmatcher REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -120,6 +122,7 @@ find_package(MRPT REQUIRED slam;vision;gui;topography)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
+  #CATKIN_DEPENDS libpointmatcher_ros
 #  INCLUDE_DIRS include
 #  LIBRARIES icp_test
 #  CATKIN_DEPENDS angles pcl_conversions pcl_ros roscpp roslib rospy sensor_msgs std_msgs tf velodyne velodyne_driver velodyne_msgs velodyne_pointcloud
@@ -135,7 +138,7 @@ catkin_package(
 # include_directories(include)
 message(STATUS "${catkin_INCLUDE_DIRS}")
 include_directories(
-	#${catkin_INCLUDE_DIRS}
+	${catkin_INCLUDE_DIRS}
 	#/home/avavav/Documents/catkin_ws_hydro/src/velodyne/velodyne_driver/include
 	#/home/avavav/Documents/catkin_ws_hydro/src/velodyne/velodyne_pointcloud/include
 	${PROJECT_SOURCE_DIR}/../velodyne/velodyne_driver/include
@@ -143,6 +146,7 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
 	/home/avavav/Downloads/IbeoSDK2.11.1/src
+	${libpointmatcher_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library
@@ -178,11 +182,13 @@ target_link_libraries(ibeo_file_read /home/avavav/Downloads/IbeoSDK2.11.1/libs/l
 	${Boost_SYSTEM_LIBRARY}
 	${Boost_THREAD_LIBRARY}
 	${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+	${libpointmatcher_LIBRARIES}
 	)
 
 add_executable(test_node src/test.cpp)
 target_link_libraries(test_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
   ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  ${libpointmatcher_LIBRARIES}
   )
 
 ## Add cmake target dependencies of the executable/library
