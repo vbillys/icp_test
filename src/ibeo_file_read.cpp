@@ -41,6 +41,7 @@
 #include "pointmatcher_ros/point_cloud.h"
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
+#include <fstream>
 using namespace PointMatcherSupport;
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
@@ -50,6 +51,8 @@ typedef velodyne_rawdata::VPoint VPoint;
 typedef velodyne_rawdata::VPointCloud VPointCloud;
 
 ros::Publisher  pub, pub_top, pub_bottom;
+std::ifstream g_cfg_ifs("default-convert.yaml");
+PM::DataPointsFilters g_dpf(g_cfg_ifs);
 
 //======================================================================
 
