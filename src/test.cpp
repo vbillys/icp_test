@@ -32,6 +32,7 @@
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
+#include <math.h>
 
 
 /** types of point and cloud to work with */
@@ -222,6 +223,10 @@ CSimplePointsMap		g_m1,g_m2;
 //boost::shared_ptr<CSimplePointsMap>		g_m1,g_m2;
 CICP					ICP;
 CPose2D g_icp_result(0.0f,0.0f,(float)DEG2RAD(0.0f));;
+double x_icp_g = 0;
+double y_icp_g = 0;
+double yaw_icp_g = 0;
+
 void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
 {
   float					runningTime;
@@ -273,16 +278,31 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     cout << " std(phi): " << RAD2DEG(sqrt( gPdf.cov(2,2) )) << " (deg)" << endl;
 
     mrpt::math::CVectorDouble icp_result;
-    //pdf->getMeanVal().getAsVector(icp_result);
-    g_icp_result = g_icp_result + pdf->getMeanVal();
+    pdf->getMeanVal().getAsVector(icp_result);
+    //g_icp_result = g_icp_result + pdf->getMeanVal();
 
-    g_icp_result.getAsVector(icp_result);
+    //g_icp_result.getAsVector(pdf->getMeanVal());
     geometry_msgs::PoseWithCovarianceStamped pose_tobe_published;
-    pose_tobe_published.pose.pose.position.x = icp_result[0];
-    pose_tobe_published.pose.pose.position.y = icp_result[1];
+    //x_icp_g = x_icp_g + icp_result[0];
+    //y_icp_g = y_icp_g + icp_result[1];
+    //double x_icp =  cos(yaw_icp_g)*x_icp_g + sin(yaw_icp_g)*y_icp_g + icp_result[0];
+    //double y_icp = -sin(yaw_icp_g)*x_icp_g + cos(yaw_icp_g)*y_icp_g + icp_result[1];
+    //double x_icp =  cos(yaw_icp_g)*icp_result[0] + sin(yaw_icp_g)*icp_result[1] + x_icp_g;
+    //double y_icp = -sin(yaw_icp_g)*icp_result[0] + cos(yaw_icp_g)*icp_result[1] + y_icp_g;
+    double x_icp =  cos(-icp_result[2])*icp_result[0] + sin(-icp_result[2])*icp_result[1] ;
+    double y_icp = -sin(-icp_result[2])*icp_result[0] + cos(-icp_result[2])*icp_result[1] ;
+    x_icp_g =  cos(-yaw_icp_g)*x_icp + sin(-yaw_icp_g)*y_icp + x_icp_g;
+    y_icp_g = -sin(-yaw_icp_g)*x_icp + cos(-yaw_icp_g)*y_icp + y_icp_g;
+    yaw_icp_g = yaw_icp_g + icp_result[2];
+    pose_tobe_published.pose.pose.position.x = x_icp_g;
+    pose_tobe_published.pose.pose.position.y = y_icp_g;
+    //pose_tobe_published.pose.pose.position.x = icp_result[0];
+    //pose_tobe_published.pose.pose.position.y = icp_result[1];
     //pose_tobe_published.pose.pose.orientation.x = icp_result[2];
-    pose_tobe_published.pose.pose.orientation = tf::createQuaternionMsgFromYaw(icp_result[2]);
+    pose_tobe_published.pose.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_icp_g);
     pub.publish(pose_tobe_published);
+    //cout << icp_result[0] << " " << icp_result[1] << " " << icp_result[2] << endl;
+    cout << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << endl;
 
   }
 }
