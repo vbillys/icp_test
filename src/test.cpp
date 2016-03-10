@@ -13,6 +13,7 @@
 #include <mrpt/poses/CPose2D.h>
 #include <mrpt/poses/CPosePDF.h>
 #include <mrpt/poses/CPosePDFGaussian.h>
+#include <mrpt/poses/CPosePDFGaussianInf.h>
 #include <mrpt/gui.h>
 #include <mrpt/math/utils.h>
 #include <mrpt/utils/types.h>
@@ -279,8 +280,13 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
 
     CPosePDFGaussian  gPdf;
     gPdf.copyFrom(*pdf);
+    CPosePDFGaussianInf gInf(gPdf);
+    mrpt::math::CMatrixDouble33 information_matrix;
+    gInf.getInformationMatrix(information_matrix);
+
 
     cout << "Covariance of estimation: " << endl << gPdf.cov << endl;
+    cout << "Information of estimation: " << endl << information_matrix << endl;
 
     cout << " std(x): " << sqrt( gPdf.cov(0,0) ) << endl;
     cout << " std(y): " << sqrt( gPdf.cov(1,1) ) << endl;
