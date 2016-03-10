@@ -226,8 +226,9 @@ public:
 	  sensor_msgs::PointCloud2 point_cloud_total_pcl;//(new PointCloud());
 	  pcl::toROSMsg(*point_cloud_total, point_cloud_total_pcl);
 	  DP mapPointCloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(point_cloud_total_pcl));
+	  g_dpf.apply(mapPointCloud);
 	  pub_point_filtered.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(mapPointCloud, "ibeo", ros::Time::now()));
-	  logInfo << mapPointCloud.getNbPoints() << std::endl;
+	  std::cout << mapPointCloud.getNbPoints() << std::endl;
 
 	}
 	else{

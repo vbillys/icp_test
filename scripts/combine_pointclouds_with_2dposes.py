@@ -16,6 +16,11 @@ g_points_new = []
 g_pub_cloud = rospy.Publisher("ibeo_points_combined", PointCloud2)
 g_pcloud = PointCloud2()
 g_pose = PoseWithCovarianceStamped()
+g_dist_accum = 0
+g_dist_thres = 10.
+g_last_dist_accum = - g_dist_thres
+g_last_x = 0 
+g_last_y = 0
 
 # def addPointsTo(pc1, pc2):
   # for point in pc2.points:
@@ -34,28 +39,37 @@ def processPose2d(msg):
   global g_point_cloud_built
   global g_pcloud
   global g_pose
+  global g_dist_accum
+  global g_last_dist_accum
+  global g_last_x
+  global g_last_y
   g_pose = msg
-  header = Header()
-  header.stamp = rospy.Time.now()
-  header.frame_id = 'ibeo'
-  H_points = [[p[0], p[1],1] for p in g_points_new]
-  M_points = numpy.matrix(H_points)
-  # print M_points
   quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
   euler = tf.transformations.euler_from_quaternion(quat)
   yaw = -euler[2]
-  tranformation_matrix = numpy.matrix([[math.cos(yaw),math.sin(yaw),msg.pose.pose.position.x],[-math.sin(yaw),math.cos(yaw),msg.pose.pose.position.y],[0,0,1]])
-  # tranformation_matrix = numpy.matrix([[math.cos(yaw),math.sin(yaw),0],[-math.sin(yaw),math.cos(yaw),0],[0,0,1]])
-  # tranformation_matrix = numpy.matrix([[1,0,-msg.pose.pose.position.x],[0,1,-msg.pose.pose.position.y],[0,0,1]])
+  g_dist_accum = g_dist_accum + math.hypot(msg.pose.pose.position.x - g_last_x, msg.pose.pose.position.y - g_last_y)
+  g_last_x = msg.pose.pose.position.x
+  g_last_y = msg.pose.pose.position.y
 
-  point_t = tranformation_matrix *M_points.getT()
-  point_t = point_t.getT().tolist()
+  if g_dist_accum > g_last_dist_accum + g_dist_thres:
+    g_last_dist_accum = g_last_dist_accum + g_dist_thres
+    tranformation_matrix = numpy.matrix([[math.cos(yaw),math.sin(yaw),msg.pose.pose.position.x],[-math.sin(yaw),math.cos(yaw),msg.pose.pose.position.y],[0,0,1]])
+    # tranformation_matrix = numpy.matrix([[math.cos(yaw),math.sin(yaw),0],[-math.sin(yaw),math.cos(yaw),0],[0,0,1]])
+    # tranformation_matrix = numpy.matrix([[1,0,-msg.pose.pose.position.x],[0,1,-msg.pose.pose.position.y],[0,0,1]])
 
-  # g_point_cloud_built = g_point_cloud_built + point_t
-  g_point_cloud_built =  point_t
-  g_pcloud = pc2.create_cloud_xyz32(header, g_point_cloud_built)
-  print msg.pose.pose.position.x, msg.pose.pose.position.y, yaw
-  g_pub_cloud.publish(g_pcloud)
+    header = Header()
+    header.stamp = rospy.Time.now()
+    header.frame_id = 'ibeo'
+    H_points = [[p[0], p[1],1] for p in g_points_new]
+    M_points = numpy.matrix(H_points)
+    # print M_points
+    point_t = tranformation_matrix *M_points.getT()
+    point_t = point_t.getT().tolist()
+    g_point_cloud_built = g_point_cloud_built + point_t
+    # g_point_cloud_built =  point_t
+    g_pcloud = pc2.create_cloud_xyz32(header, g_point_cloud_built)
+    print msg.pose.pose.position.x, msg.pose.pose.position.y, yaw
+    g_pub_cloud.publish(g_pcloud)
   pass
 
 def talker():
