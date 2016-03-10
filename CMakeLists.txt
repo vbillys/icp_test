@@ -147,6 +147,7 @@ include_directories(
 	${PCL_INCLUDE_DIRS}
 	/home/avavav/Downloads/IbeoSDK2.11.1/src
 	${libpointmatcher_INCLUDE_DIRS}
+	${PROJECT_SOURCE_DIR}/src/toro
 )
 
 ## Declare a cpp library
@@ -155,7 +156,8 @@ include_directories(
 # )
 
 
-link_directories(${PCL_LIBRARY_DIRS} src)
+
+link_directories(${PCL_LIBRARY_DIRS} src ${PROJECT_SOURCE_DIR}/src/toro)
 add_definitions(${PCL_DEFINITIONS})
 
 #message(STATUS "${PCL_LIBRARIES} ${PCL_DEFINITIONS} ${PCL_LIBRARY_DIRS}")
@@ -189,6 +191,7 @@ add_executable(test_node src/test.cpp)
 target_link_libraries(test_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
   ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
   ${libpointmatcher_LIBRARIES}
+  libtoro.a
   )
 
 ## Add cmake target dependencies of the executable/library

@@ -40,6 +40,9 @@
 #include <iostream>
 #include <fstream>
 
+#include "treeoptimizer2.hh"
+
+
 /** types of point and cloud to work with */
 typedef velodyne_rawdata::VPoint VPoint;
 typedef velodyne_rawdata::VPointCloud VPointCloud;
