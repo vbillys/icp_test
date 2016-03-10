@@ -50,7 +50,7 @@ typedef PM::DataPoints DP;
 typedef velodyne_rawdata::VPoint VPoint;
 typedef velodyne_rawdata::VPointCloud VPointCloud;
 
-ros::Publisher  pub, pub_top, pub_bottom;
+ros::Publisher  pub, pub_top, pub_bottom, pub_point_filtered;
 std::ifstream g_cfg_ifs("default-convert.yaml");
 PM::DataPointsFilters g_dpf(g_cfg_ifs);
 
@@ -225,7 +225,10 @@ public:
 	  pub.publish(point_cloud_total);
 	  sensor_msgs::PointCloud2 point_cloud_total_pcl;//(new PointCloud());
 	  pcl::toROSMsg(*point_cloud_total, point_cloud_total_pcl);
-	  DP cloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(point_cloud_total_pcl));
+	  DP mapPointCloud(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(point_cloud_total_pcl));
+	  pub_point_filtered.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(mapPointCloud, "ibeo", ros::Time::now()));
+	  logInfo << mapPointCloud.getNbPoints() << std::endl;
+
 	}
 	else{
 	  //point_cloud_total =  new VPointCloud();
@@ -520,6 +523,7 @@ int main(const int argc, const char** argv)
 	pub = nh.advertise<sensor_msgs::PointCloud2>( "ibeo_points", 1);
 	pub_top = nh.advertise<sensor_msgs::PointCloud2>( "ibeo_points_top", 1);
 	pub_bottom = nh.advertise<sensor_msgs::PointCloud2>( "ibeo_points_bottom", 1);
+	pub_point_filtered = nh.advertise<sensor_msgs::PointCloud2>( "ibeo_points_filtered", 1);
 
 	std::cerr << argv[0] << " Version " << appVersion.toString();
 	std::cerr << "  using IbeoSDK " << ibeoSDK.getVersion().toString() << std::endl;

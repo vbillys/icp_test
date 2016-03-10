@@ -51,15 +51,16 @@ def processPose2d(msg):
   point_t = tranformation_matrix *M_points.getT()
   point_t = point_t.getT().tolist()
 
-  g_point_cloud_built = g_point_cloud_built + point_t
-  # g_point_cloud_built =  point_t
+  # g_point_cloud_built = g_point_cloud_built + point_t
+  g_point_cloud_built =  point_t
   g_pcloud = pc2.create_cloud_xyz32(header, g_point_cloud_built)
   print msg.pose.pose.position.x, msg.pose.pose.position.y, yaw
   g_pub_cloud.publish(g_pcloud)
   pass
 
 def talker():
-  rospy.Subscriber('ibeo_points', PointCloud2, processPointCloud)
+  # rospy.Subscriber('ibeo_points', PointCloud2, processPointCloud)
+  rospy.Subscriber('ibeo_points_filtered', PointCloud2, processPointCloud)
   rospy.Subscriber('mrpt_pose2d', PoseWithCovarianceStamped, processPose2d)
   rospy.spin()
 
