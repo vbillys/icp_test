@@ -314,6 +314,12 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     yaw_icp_g = yaw_icp_g + icp_result[2];
     pose_tobe_published.pose.pose.position.x = x_icp_g;
     pose_tobe_published.pose.pose.position.y = y_icp_g;
+    pose_tobe_published.pose.covariance[0] = information_matrix(0,0);
+    pose_tobe_published.pose.covariance[1] = information_matrix(0,1);
+    pose_tobe_published.pose.covariance[2] = information_matrix(1,1);
+    pose_tobe_published.pose.covariance[3] = information_matrix(2,2);
+    pose_tobe_published.pose.covariance[4] = information_matrix(0,2);
+    pose_tobe_published.pose.covariance[5] = information_matrix(1,2);
     //pose_tobe_published.pose.pose.position.x = icp_result[0];
     //pose_tobe_published.pose.pose.position.y = icp_result[1];
     //pose_tobe_published.pose.pose.orientation.x = icp_result[2];

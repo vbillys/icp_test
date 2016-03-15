@@ -22,6 +22,9 @@ g_dist_thres = 10.
 g_last_dist_accum = - g_dist_thres
 g_last_x = 0 
 g_last_y = 0
+g_last_captured_x = 0
+g_last_captured_y = 0
+g_last_captured_yaw = 0
 
 # def addPointsTo(pc1, pc2):
   # for point in pc2.points:
@@ -44,6 +47,9 @@ def processPose2d(msg):
   global g_last_dist_accum
   global g_last_x
   global g_last_y
+  global g_last_captured_x
+  global g_last_captured_y
+  global g_last_captured_yaw
   g_pose = msg
   quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
   euler = tf.transformations.euler_from_quaternion(quat)
@@ -70,9 +76,16 @@ def processPose2d(msg):
     # g_point_cloud_built =  point_t
     g_pcloud = pc2.create_cloud_xyz32(header, g_point_cloud_built)
     pc_point_t = pc2.create_cloud_xyz32(header, point_t)
-    print msg.pose.pose.position.x, msg.pose.pose.position.y, yaw
+    observed_x = -g_last_captured_x + msg.pose.pose.position.x
+    observed_y = -g_last_captured_y + msg.pose.pose.position.y
+    observed_x_local =  math.cos(-yaw)*observed_x + math.sin(-yaw)*observed_y
+    observed_y_local = -math.sin(-yaw)*observed_x + math.cos(-yaw)*observed_y
+    print msg.pose.pose.position.x, msg.pose.pose.position.y, yaw, observed_x_local,observed_y_local,-g_last_captured_yaw +yaw, msg.pose.covariance[0], msg.pose.covariance[1],msg.pose.covariance[2],msg.pose.covariance[3],msg.pose.covariance[4],   msg.pose.covariance[5]
     g_pub_cloud.publish(g_pcloud)
     g_pub_cloud_only_current.publish(pc_point_t)
+    g_last_captured_x = msg.pose.pose.position.x
+    g_last_captured_y = msg.pose.pose.position.y
+    g_last_captured_yaw = yaw
   pass
 
 def talker():
