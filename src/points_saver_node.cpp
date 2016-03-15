@@ -121,8 +121,10 @@ int main(int argc, char **argv)
   ros::NodeHandle nh;//("~");
   ros::Rate r(20);
   //ros::Subscriber sub = nh.subscribe ("ibeo_points_filtered", 1 , savePointCloud);
-  ros::Subscriber sub = nh.subscribe ("ibeo_points_icp_only_current", 1 , savePointCloud);
-  ros::Subscriber sub2= nh.subscribe ("ibeo_points_icp_only_current_filtered", 1 , savePointCloudFiltered);
+  //ros::Subscriber sub = nh.subscribe ("ibeo_points_icp_only_current", 1 , savePointCloud);
+  //ros::Subscriber sub2= nh.subscribe ("ibeo_points_icp_only_current_filtered", 1 , savePointCloudFiltered);
+  ros::Subscriber sub = nh.subscribe ("ibeo_points", 1 , savePointCloud);
+  ros::Subscriber sub2= nh.subscribe ("ibeo_points_filtered", 1 , savePointCloudFiltered);
   //ros::Subscriber sub2= nh.subscribe ("mrpt_pose2d", 1 , processICPResult);
   while (ros::ok()){ros::spinOnce();r.sleep();}//ROS_INFO_STREAM("Hello, world!");r.sleep();}
   return 0;

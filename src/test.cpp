@@ -41,6 +41,7 @@
 #include <fstream>
 
 #include "treeoptimizer2.hh"
+#include <boost/format.hpp>
 
 
 /** types of point and cloud to work with */
@@ -221,11 +222,17 @@ void TestICP()
 void transferPclPointCloudToXYPointsMap(VPointCloud::Ptr &input_pc,  CSimplePointsMap*  point_map)
 {
   std::vector<float> xs, ys;
+  //static int n=0;
+  //char buffer[100];
+  //snprintf(buffer, sizeof(buffer), "scan_%d.txt", n++);
+  //ofstream fos(buffer);
+
   for (size_t next = 0; next < input_pc->points.size(); ++next)
   {
     velodyne_pointcloud::PointXYZIR _point = input_pc->points.at(next);
     xs.push_back(_point.x);
     ys.push_back(_point.y);
+    //fos<< fixed << setprecision(6) << _point.x << " " << _point.y << endl;
   }
   point_map->setAllPoints(xs, ys);
 
@@ -239,6 +246,9 @@ CPose2D g_icp_result(0.0f,0.0f,(float)DEG2RAD(0.0f));;
 double x_icp_g = 0;
 double y_icp_g = 0;
 double yaw_icp_g = 0;
+
+ofstream os("icp_poses.txt");
+
 
 void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
 {
@@ -257,7 +267,6 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
   else
   {
     //delete(g_m1);
-    g_m1 = g_m2;
     //g_m2 = (boost::shared_ptr<CSimplePointsMap>)new CSimplePointsMap();
     //g_m2 = new CSimplePointsMap();
     transferPclPointCloudToXYPointsMap(cloud, &g_m2);
@@ -327,6 +336,12 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     pub.publish(pose_tobe_published);
     //cout << icp_result[0] << " " << icp_result[1] << " " << icp_result[2] << endl;
     cout << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << endl;
+    os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
+    //g_m1 = g_m2;
+    g_m1.clear();
+    std::vector<float> xs, ys;
+    g_m2.getAllPoints(xs, ys);
+    g_m1.setAllPoints(xs, ys);
 
   }
 }
