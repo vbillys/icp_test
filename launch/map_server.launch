@@ -1,0 +1,7 @@
+<launch>
+<!--<node pkg="map_server" type="map_server" name="map_server_node" output="screen" args="$(find icp_test)/launch/amcl_ros.yaml">-->
+<node pkg="map_server" type="map_server" name="map_server_node" output="screen" args="$(find icp_test)/launch/fp2ml_cropped.yaml">
+<param name="frame_id" value="ibeo"/>
+</node>
+</launch>
+
