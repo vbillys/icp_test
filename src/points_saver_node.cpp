@@ -91,6 +91,26 @@ void savePointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
 
 }
 
+void savePointCloudFiltered (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
+{
+  static int n=0;
+  //VPointCloud::Ptr cloud(new VPointCloud());
+  //PointXYZ::Ptr cloud(new PointXYZ());
+  //pcl::PointCloud<pcl::PointXYZ> _cloud;
+  //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(_cloud); //(&(new pcl::PointCloud<pcl::PointXYZ>));
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+  //pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(_cloud); //(&(new pcl::PointCloud<pcl::PointXYZ>));
+  //cloud = _cloud.makeShared();
+
+  pcl::fromROSMsg(*cloud_msg , *cloud);
+  transferPclPointCloudToXYPointsMap(cloud, &g_m2);
+  char buffer[100];
+  snprintf(buffer, sizeof(buffer), "scan_filtered_%d.txt", n++);
+  bool ok_is_saved = g_m2.save2D_to_text_file(std::string(buffer));
+  std::cout << buffer << " " << ok_is_saved << std::endl;
+
+}
+
 void processICPResult (const geometry_msgs::PoseWithCovarianceStampedPtr& pose_msg)
 {
 }
@@ -102,6 +122,7 @@ int main(int argc, char **argv)
   ros::Rate r(20);
   //ros::Subscriber sub = nh.subscribe ("ibeo_points_filtered", 1 , savePointCloud);
   ros::Subscriber sub = nh.subscribe ("ibeo_points_icp_only_current", 1 , savePointCloud);
+  ros::Subscriber sub2= nh.subscribe ("ibeo_points_icp_only_current_filtered", 1 , savePointCloudFiltered);
   //ros::Subscriber sub2= nh.subscribe ("mrpt_pose2d", 1 , processICPResult);
   while (ros::ok()){ros::spinOnce();r.sleep();}//ROS_INFO_STREAM("Hello, world!");r.sleep();}
   return 0;
