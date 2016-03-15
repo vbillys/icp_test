@@ -194,6 +194,13 @@ target_link_libraries(test_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
   libtoro.a
   )
 
+add_executable(points_saver_node src/points_saver_node.cpp)
+target_link_libraries(points_saver_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  ${libpointmatcher_LIBRARIES}
+  libtoro.a
+  )
+
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(icp_test_node icp_test_generate_messages_cpp)

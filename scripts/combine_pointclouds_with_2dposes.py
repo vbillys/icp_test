@@ -14,6 +14,7 @@ rospy.init_node('point_cloud_combiner_with_2dposes_node', anonymous=False)
 g_point_cloud_built = [] 
 g_points_new = []
 g_pub_cloud = rospy.Publisher("ibeo_points_combined", PointCloud2)
+g_pub_cloud_only_current = rospy.Publisher("ibeo_points_icp_only_current", PointCloud2)
 g_pcloud = PointCloud2()
 g_pose = PoseWithCovarianceStamped()
 g_dist_accum = 0
@@ -68,8 +69,10 @@ def processPose2d(msg):
     g_point_cloud_built = g_point_cloud_built + point_t
     # g_point_cloud_built =  point_t
     g_pcloud = pc2.create_cloud_xyz32(header, g_point_cloud_built)
+    pc_point_t = pc2.create_cloud_xyz32(header, point_t)
     print msg.pose.pose.position.x, msg.pose.pose.position.y, yaw
     g_pub_cloud.publish(g_pcloud)
+    g_pub_cloud_only_current.publish(pc_point_t)
   pass
 
 def talker():
