@@ -35,6 +35,7 @@ find_package(catkin REQUIRED COMPONENTS
 	velodyne_msgs
 	velodyne_pointcloud
 	libpointmatcher_ros
+	message_generation
 	)
 
 ## System dependencies are found with CMake's conventions
@@ -86,18 +87,22 @@ find_package(libpointmatcher REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
+ #add_message_files(
+   #DEPENDENCIES
+   #sensor_msgs
+   #geometry_msgs
+   #FILES
 #   Message1.msg
 #   Message2.msg
-# )
+ #)
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
+ add_service_files(
+   FILES
+   processICP.srv
 #   Service1.srv
 #   Service2.srv
-# )
+ )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -107,10 +112,12 @@ find_package(libpointmatcher REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
+ generate_messages(
+   DEPENDENCIES
+   sensor_msgs
+   geometry_msgs
 #   sensor_msgs#   std_msgs#   velodyne_msgs
-# )
+ )
 
 ###################################
 ## catkin specific configuration ##

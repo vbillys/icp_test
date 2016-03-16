@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-
+import rospy
+from sensor_msgs.msg import PointCloud2
+import sensor_msgs.point_cloud2 as pc2
+from std_msgs.msg import Header
+from icp_test.srv import *
 
 from cython_catkin_example import cython_catkin_example
 
@@ -40,17 +44,48 @@ def grouper(n, iterable, fillvalue=None):
 
 points = getFloatNumberFromReadLines(f_handle, 12)
 
+rospy.init_node('point_cloud_pub_from_process_graph_node', anonymous=False)
+g_pub_ros = rospy.Publisher("ibeo_points", PointCloud2)
+def publishScan(no):
+	header = Header()
+	header.stamp = rospy.Time.now()
+	header.frame_id = 'ibeo'
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
+	H_points = [[p[0], p[1],1] for p in test_cloud]
+	pc_point_t = pc2.create_cloud_xyz32(header, H_points)
+	g_pub_ros.publish(pc_point_t)
+
+rospy.wait_for_service('processICP')
+g_processICP_srv = rospy.ServiceProxy('processICP', processICP)
 def computeICPBetweenScans(no1,no2):
+	header = Header()
+	header.stamp = rospy.Time.now()
+	header.frame_id = 'ibeo'
+
 	example = cython_catkin_example.PyCCExample()
+
 	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no1)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no1)+'.txt')
+
+	H_points = [[p[0], p[1],1] for p in test_cloud]
+	pc_point_t1 = pc2.create_cloud_xyz32(header, H_points)
+	# print 'text1: ',len(test_cloud)
 	# print test_cloud
 	example.load_2d_array('ref_map',np.array(test_cloud, np.float32)) 
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
-	example.load_2d_array('que_map',np.array(test_cloud, np.float32)) 
-	names = example.get_point_xyz_clouds_names()
-	# print("Current point clouds: " + ",".join(names))
-	return example.processICP()
 
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no2)+'.txt')
+
+	H_points = [[p[0], p[1],1] for p in test_cloud]
+	pc_point_t2 = pc2.create_cloud_xyz32(header, H_points)
+	# print 'text2: ',len(test_cloud)
+	example.load_2d_array('que_map',np.array(test_cloud, np.float32)) 
+	# names = example.get_point_xyz_clouds_names()
+	# print("Current point clouds: " + ",".join(names))
+	icp_ros_result = g_processICP_srv(pc_point_t1, pc_point_t2)
+	# print icp_ros_result
+	# return example.processICP()
+	return icp_ros_result.result.pose.pose.position.x, icp_ros_result.result.pose.pose.position.y, icp_ros_result.result.pose.pose.position.z,icp_ros_result.result.pose.covariance[0],icp_ros_result.result.pose.covariance[1],icp_ros_result.result.pose.covariance[2],icp_ros_result.result.pose.covariance[3],icp_ros_result.result.pose.covariance[4],icp_ros_result.result.pose.covariance[5]
 
 # example = cython_catkin_example.PyCCExample()
 # # test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_6.txt')
@@ -99,18 +134,28 @@ def plotScan(no, ax):
 
 def plotScanTransformed(no, ax, tm):
 	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no)+'.txt')
 	point_t = transformCloud(test_cloud, tm)
 	ax.set_offsets(np.column_stack(([x[0] for x in point_t],[x[1] for x in point_t])))
 
 def plotMapTransformed(no, ax, tm, map_xx, map_yy):
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
 	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no+1)+'.txt')
 	point_t = transformCloud(test_cloud, tm)
 	map_xx = map_xx + [x[0] for x in point_t]
 	map_yy = map_yy + [x[1] for x in point_t]
 	
 	ax.set_offsets(np.column_stack((map_xx,map_yy))) 
 	return map_xx, map_yy
+
+def accumulateIcpTransform(icp_result, x, y, yaw):
+	x_icp =  math.cos(-icp_result[2])*icp_result[0] + math.sin(-icp_result[2])*icp_result[1] 
+	y_icp = -math.sin(-icp_result[2])*icp_result[0] + math.cos(-icp_result[2])*icp_result[1]
+	x_icp_g =  math.cos(-yaw)*x_icp + math.sin(-yaw)*y_icp + x
+	y_icp_g = -math.sin(-yaw)*x_icp + math.cos(-yaw)*y_icp + y
+	yaw_icp_g = yaw + icp_result[2]
+	return x_icp_g, y_icp_g, yaw_icp_g
 
 # ax = plt.axes()
 # plotScan(0, ax)
@@ -127,25 +172,42 @@ class AnimatedScatter(object):
 		self.travelled_dist = 0 
 		self.last_x = 0
 		self.last_y = 0
+		self.last_yaw = 0
 		self.next_capture_dist = 0- g_thresh
 		self._to_clear_2 = None
 		self.ani = animation.FuncAnimation(self.fig, self.update, interval=80, init_func=self.setup_plot, blit=True, frames=len(points)-1, repeat=False)
+		# self.ani = animation.FuncAnimation(self.fig, self.update, interval=80, init_func=self.setup_plot, blit=True, frames=2000, repeat=False)
 		# self.ani = animation.FuncAnimation(self.fig, self.update, interval=80,  blit=True, frames=len(points)-1, repeat=False)
 	def setup_plot(self):
-		self.scatter_scan = self.ax.scatter ([],[], color='blue', s=8)# print 'hi setup anim'
+		print 'hi setup anim'
+		self.scatter_scan = self.ax.scatter ([],[], color='blue', s=8)
 		self.scatter_map = self.ax.scatter ([],[], color='green', s=4)
 		return self.scatter_scan, self.scatter_map
 	def update(self,i):
+		print 'updating figure...', i
 		# print self.no_frame
 		# _to_clear = plotScan(self.no_frame)
-		yaw = - points[i][2]
-		x = points[i][0]
-		y = points[i][1]
+		# print computeICPBetweenScans(i,i+1)
+		# print points[i+1]
+		# publishScan(i)
+
+		# yaw = points[i][2]
+		# x = points[i][0]
+		# y = points[i][1]
+		if i == 0:
+			yaw = 0
+			x = 0
+			y = 0
+		else:
+			icp_result = computeICPBetweenScans(i-1,i)
+			x,y,yaw = accumulateIcpTransform(icp_result,self.last_x,self.last_y,self.last_yaw)
 		self.travelled_dist = self.travelled_dist + math.hypot(self.last_x - x, self.last_y - y)
 		# print self.travelled_dist, self.next_capture_dist
 		self.last_x = x
 		self.last_y = y
-		tranformation_matrix = np.matrix([[math.cos(yaw),math.sin(yaw),x],[-math.sin(yaw),math.cos(yaw),y],[0,0,1]])
+		self.last_yaw = yaw
+
+		tranformation_matrix = np.matrix([[math.cos(-yaw),math.sin(-yaw),x],[-math.sin(-yaw),math.cos(-yaw),y],[0,0,1]])
 		_to_clear = [self.scatter_scan]
 		# _to_clear.append(plotScan(i, self.scatter_scan))
 		# plotScan(i, self.scatter_scan)
@@ -165,6 +227,7 @@ class AnimatedScatter(object):
 AnimatedScatter()
 plt.show()
 exit()
+
 myscreen = curses.initscr()
 myscreen.addstr(12,25,'Recomputing ICP, 0/%(total_points)d' % {'total_points':len(points)})
 myscreen.refresh()

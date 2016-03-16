@@ -26,6 +26,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <icp_test/processICP.h>
 #include <tf/transform_broadcaster.h>
 
 #include <velodyne_pointcloud/rawdata.h>
@@ -218,13 +219,32 @@ void TestICP()
 
 }
 
+
+void transferPclPointCloudXYZToXYPointsMap(pcl::PointCloud<pcl::PointXYZ>::Ptr &input_pc,  CSimplePointsMap*  point_map)
+{
+  std::vector<float> xs, ys;
+  //static int n=0;
+  //char buffer[100];
+  //snprintf(buffer, sizeof(buffer), "scan_direct_%d.txt", n++);
+  //ofstream fos(buffer);
+
+  for (size_t next = 0; next < input_pc->points.size(); ++next)
+  {
+    pcl::PointXYZ _point = input_pc->points.at(next);
+    xs.push_back(_point.x);
+    ys.push_back(_point.y);
+    //fos<< fixed << setprecision(6) << _point.x << " " << _point.y << endl;
+  }
+  point_map->setAllPoints(xs, ys);
+}
+
 //void transferPclPointCloudToXYPointsMap(VPointCloud::Ptr &input_pc, boost::shared_ptr<CSimplePointsMap> & point_map)
 void transferPclPointCloudToXYPointsMap(VPointCloud::Ptr &input_pc,  CSimplePointsMap*  point_map)
 {
   std::vector<float> xs, ys;
   //static int n=0;
   //char buffer[100];
-  //snprintf(buffer, sizeof(buffer), "scan_%d.txt", n++);
+  //snprintf(buffer, sizeof(buffer), "scan_direct_%d.txt", n++);
   //ofstream fos(buffer);
 
   for (size_t next = 0; next < input_pc->points.size(); ++next)
@@ -247,7 +267,7 @@ double x_icp_g = 0;
 double y_icp_g = 0;
 double yaw_icp_g = 0;
 
-ofstream os("icp_poses.txt");
+//ofstream os("icp_poses.txt");
 
 
 void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
@@ -336,7 +356,8 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     pub.publish(pose_tobe_published);
     //cout << icp_result[0] << " " << icp_result[1] << " " << icp_result[2] << endl;
     cout << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << endl;
-    os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
+    //os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
+    cout<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
     //g_m1 = g_m2;
     g_m1.clear();
     std::vector<float> xs, ys;
@@ -346,6 +367,63 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
   }
 }
 
+
+bool processICPService(icp_test::processICP::Request & req, icp_test::processICP::Response & res)
+{
+  //std::cout << "hi from ICPService\n";
+  //res.result.pose.pose.position.x = 1.334567;
+  //res.result.header.frame_id = "semak";
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::fromROSMsg(req.ref , *cloud);
+  transferPclPointCloudXYZToXYPointsMap(cloud, &g_m1);
+  cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+  pcl::fromROSMsg(req.que , *cloud);
+  transferPclPointCloudXYZToXYPointsMap(cloud, &g_m2);
+  CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
+  float					runningTime;
+  CICP::TReturnInfo		info;
+  CPosePDFPtr pdf = ICP.Align(
+      &g_m1,
+      &g_m2,
+      //g_m1.get(),
+      //g_m2.get(),
+      initialPose,
+      &runningTime,
+      (void*)&info);
+
+  printf("ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n -> ",
+      runningTime*1000,
+      info.nIterations,
+      runningTime*1000.0f/info.nIterations,
+      info.goodness*100 );
+  cout << "Mean of estimation: " << pdf->getMeanVal() << endl<< endl;
+
+  CPosePDFGaussian  gPdf;
+  gPdf.copyFrom(*pdf);
+  CPosePDFGaussianInf gInf(gPdf);
+  mrpt::math::CMatrixDouble33 information_matrix;
+  gInf.getInformationMatrix(information_matrix);
+
+  cout << "Covariance of estimation: " << endl << gPdf.cov << endl;
+  cout << "Information of estimation: " << endl << information_matrix << endl;
+  cout << " std(x): " << sqrt( gPdf.cov(0,0) ) << endl;
+  cout << " std(y): " << sqrt( gPdf.cov(1,1) ) << endl;
+  cout << " std(phi): " << RAD2DEG(sqrt( gPdf.cov(2,2) )) << " (deg)" << endl;
+
+  mrpt::math::CVectorDouble icp_result;
+  pdf->getMeanVal().getAsVector(icp_result);
+  res.result.pose.pose.position.x = icp_result[0];
+  res.result.pose.pose.position.y = icp_result[1];
+  res.result.pose.pose.position.z = icp_result[2];
+  res.result.pose.covariance[0]=information_matrix(0,0);
+  res.result.pose.covariance[1]=information_matrix(0,1);
+  res.result.pose.covariance[2]=information_matrix(1,1);
+  res.result.pose.covariance[3]=information_matrix(2,2);
+  res.result.pose.covariance[4]=information_matrix(0,2);
+  res.result.pose.covariance[5]=information_matrix(1,2);
+
+  return true;
+}
 
 int main(int argc, char **argv)
 {
@@ -378,6 +456,8 @@ int main(int argc, char **argv)
   ros::Subscriber sub = nh.subscribe ("ibeo_points", 1 , processPointCloud);
 
   pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>( "mrpt_pose2d", 1);
+
+  ros::ServiceServer service = nh.advertiseService("processICP", processICPService);
 
   //	ICP.options.ICP_algorithm = icpLevenbergMarquardt;
   //	ICP.options.ICP_algorithm = icpClassic;
