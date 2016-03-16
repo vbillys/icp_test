@@ -3,6 +3,7 @@
 
 from cython_catkin_example import cython_catkin_example
 
+import math
 import numpy as np
 import pylab as plt
 import itertools
@@ -81,33 +82,85 @@ for vertex in points:
 	index_point = index_point + 1
 
 
+def transformCloud(test_cloud, tm):
+	H_points = [[p[0], p[1],1] for p in test_cloud]
+	M_points = np.matrix(H_points)
+	point_t = tm *M_points.getT()
+	point_t = point_t.getT().tolist()
+	return point_t	
+
 def plotScan(no, ax):
 	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
-	return ax.scatter ([x[0] for x in test_cloud],[x[1] for x in test_cloud], color='blue', s=8)
+	# return ax.scatter ([x[0] for x in test_cloud],[x[1] for x in test_cloud], color='blue', s=8)
+	ax.set_offsets(np.column_stack(([x[0] for x in test_cloud],[x[1] for x in test_cloud])))
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no)+'.txt')
 	# ax.scatter ([x[0] for x in test_cloud],[x[1] for x in test_cloud], color='red', s=8)
 
 
+def plotScanTransformed(no, ax, tm):
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
+	point_t = transformCloud(test_cloud, tm)
+	ax.set_offsets(np.column_stack(([x[0] for x in point_t],[x[1] for x in point_t])))
+
+def plotMapTransformed(no, ax, tm, map_xx, map_yy):
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no)+'.txt')
+	point_t = transformCloud(test_cloud, tm)
+	map_xx = map_xx + [x[0] for x in point_t]
+	map_yy = map_yy + [x[1] for x in point_t]
+	
+	ax.set_offsets(np.column_stack((map_xx,map_yy))) 
+	return map_xx, map_yy
+
 # ax = plt.axes()
 # plotScan(0, ax)
 # ax.scatter(points_tracked[0], points_tracked[1] , color='blue', s=8)
+g_thresh = 10.
 class AnimatedScatter(object):
 	def __init__(self):
 		self.fig, self.ax = plt.subplots()
-		self.ax.axis([-100, 100, -100, 100])
+		self.ax.axis([-200, 100, -100, 200])
 		self.ax.set_aspect('equal','datalim')
-		self.no_frame = 0
-		# self.ani = animation.FuncAnimation(self.fig, self.update, interval=80, init_func=self.setup_plot, blit=True, frames=len(points)-1, repeat=False)
-		self.ani = animation.FuncAnimation(self.fig, self.update, interval=80,  blit=True, frames=len(points)-1, repeat=False)
+		# self.no_frame = 0
+		self.points_map_x = []
+		self.points_map_y = []
+		self.travelled_dist = 0 
+		self.last_x = 0
+		self.last_y = 0
+		self.next_capture_dist = 0- g_thresh
+		self._to_clear_2 = None
+		self.ani = animation.FuncAnimation(self.fig, self.update, interval=80, init_func=self.setup_plot, blit=True, frames=len(points)-1, repeat=False)
+		# self.ani = animation.FuncAnimation(self.fig, self.update, interval=80,  blit=True, frames=len(points)-1, repeat=False)
 	def setup_plot(self):
-		# print 'hi setup anim'
-		pass
+		self.scatter_scan = self.ax.scatter ([],[], color='blue', s=8)# print 'hi setup anim'
+		self.scatter_map = self.ax.scatter ([],[], color='green', s=4)
+		return self.scatter_scan, self.scatter_map
 	def update(self,i):
 		# print self.no_frame
 		# _to_clear = plotScan(self.no_frame)
-		_to_clear = plotScan(i, self.ax)
-		self.no_frame = self.no_frame + 1
-		return _to_clear,
+		yaw = - points[i][2]
+		x = points[i][0]
+		y = points[i][1]
+		self.travelled_dist = self.travelled_dist + math.hypot(self.last_x - x, self.last_y - y)
+		# print self.travelled_dist, self.next_capture_dist
+		self.last_x = x
+		self.last_y = y
+		tranformation_matrix = np.matrix([[math.cos(yaw),math.sin(yaw),x],[-math.sin(yaw),math.cos(yaw),y],[0,0,1]])
+		_to_clear = [self.scatter_scan]
+		# _to_clear.append(plotScan(i, self.scatter_scan))
+		# plotScan(i, self.scatter_scan)
+		plotScanTransformed(i, self.scatter_scan, tranformation_matrix)
+		if self.travelled_dist > self.next_capture_dist:
+			self.next_capture_dist = self.next_capture_dist + g_thresh
+			# if self._to_clear_2 is not None:
+			self.points_map_x, self.points_map_y = plotMapTransformed(i, self.scatter_map, tranformation_matrix, self.points_map_x, self.points_map_y)
+			# self._to_clear_2 = _to_clear_2
+		else:
+			self.scatter_map.set_offsets(np.column_stack((self.points_map_x, self.points_map_y)))
+			# self.no_frame = self.no_frame + 1
+			# return _to_clear_1, _to_clear_2
+		_to_clear = _to_clear + [self.scatter_map]
+		return _to_clear
 
 AnimatedScatter()
 plt.show()
