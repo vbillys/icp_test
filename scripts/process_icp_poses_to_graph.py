@@ -11,9 +11,11 @@ import math
 import numpy as np
 import pylab as plt
 import itertools
-# import curses
+import curses
 import pylab as plt
 import matplotlib.animation as animation
+
+from scipy.spatial import KDTree
 
 f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
 f_handle_w = open('icp_poses.graph','w')
@@ -43,6 +45,8 @@ def grouper(n, iterable, fillvalue=None):
 	return itertools.zip_longest(*args, fillvalue=fillvalue)
 
 points = getFloatNumberFromReadLines(f_handle, 12)
+points_2d = [[p[0],p[1]] for p in points]
+tree_points  = KDTree(np.array(points_2d), leafsize=30)
 
 rospy.init_node('point_cloud_pub_from_process_graph_node', anonymous=False)
 g_pub_ros = rospy.Publisher("ibeo_points", PointCloud2)
@@ -91,7 +95,7 @@ def computeICPBetweenScans(no1,no2):
 
 	# cython_icp_result = example.processICP(np.array(test_cloud, np.float32),np.array(test_cloud2, np.float32))
 	cython_icp_result = example.processICP(np.array([x[0] for x in test_cloud], np.float32),np.array([x[1] for x in test_cloud], np.float32),np.array([x[0] for x in test_cloud2], np.float32),np.array([x[1] for x in test_cloud2], np.float32))
-	print cython_icp_result
+	# print cython_icp_result
 	return cython_icp_result
 
 	# return icp_ros_result.result.pose.pose.position.x, icp_ros_result.result.pose.pose.position.y, icp_ros_result.result.pose.pose.position.z,icp_ros_result.result.pose.covariance[0],icp_ros_result.result.pose.covariance[1],icp_ros_result.result.pose.covariance[2],icp_ros_result.result.pose.covariance[3],icp_ros_result.result.pose.covariance[4],icp_ros_result.result.pose.covariance[5]
@@ -233,35 +237,32 @@ class AnimatedScatter(object):
 		_to_clear = _to_clear + [self.scatter_map]
 		return _to_clear
 
-AnimatedScatter()
-plt.show()
-exit()
-
-myscreen = curses.initscr()
-myscreen.addstr(12,25,'Recomputing ICP, 0/%(total_points)d' % {'total_points':len(points)})
-myscreen.refresh()
+# AnimatedScatter()
+# plt.show()
+# exit()
 
 
-str_edge_recomputed = ''
-index_point = 0
-for edge in points:
-	str_edge_recomputed = str_edge_recomputed + 'EDGE2 '
-	str_edge_recomputed = str_edge_recomputed + format(index_point+1,'d') + ' '
-	str_edge_recomputed = str_edge_recomputed + format(index_point  ,'d') + ' '
-	myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point,'total_points':len(points)})
-	myscreen.refresh()
-	recomputed = computeICPBetweenScans(index_point, index_point+1)
-	str_edge_recomputed = str_edge_recomputed + format(recomputed[0],'.4f') + ' '
-	str_edge_recomputed = str_edge_recomputed + format(recomputed[1],'.4f') + ' '
-	str_edge_recomputed = str_edge_recomputed + format(recomputed[2],'.4f') + ' '
-	str_edge_recomputed = str_edge_recomputed + format(recomputed[3],'.4f') + ' '
-	str_edge_recomputed = str_edge_recomputed + format(recomputed[4],'.4f') + ' '
-	str_edge_recomputed = str_edge_recomputed + format(recomputed[5],'.4f') + ' '
-	str_edge_recomputed = str_edge_recomputed + format(recomputed[6],'.4f') + ' '
-	str_edge_recomputed = str_edge_recomputed + format(recomputed[7],'.4f') + ' '
-	str_edge_recomputed = str_edge_recomputed + format(recomputed[8],'.4f')
-	str_edge_recomputed = str_edge_recomputed + '\n'
-	index_point = index_point + 1
+
+# str_edge_recomputed = ''
+# index_point = 0
+# for edge in points:
+	# str_edge_recomputed = str_edge_recomputed + 'EDGE2 '
+	# str_edge_recomputed = str_edge_recomputed + format(index_point+1,'d') + ' '
+	# str_edge_recomputed = str_edge_recomputed + format(index_point  ,'d') + ' '
+	# myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point,'total_points':len(points)})
+	# myscreen.refresh()
+	# recomputed = computeICPBetweenScans(index_point, index_point+1)
+	# str_edge_recomputed = str_edge_recomputed + format(recomputed[0],'.4f') + ' '
+	# str_edge_recomputed = str_edge_recomputed + format(recomputed[1],'.4f') + ' '
+	# str_edge_recomputed = str_edge_recomputed + format(recomputed[2],'.4f') + ' '
+	# str_edge_recomputed = str_edge_recomputed + format(recomputed[3],'.4f') + ' '
+	# str_edge_recomputed = str_edge_recomputed + format(recomputed[4],'.4f') + ' '
+	# str_edge_recomputed = str_edge_recomputed + format(recomputed[5],'.4f') + ' '
+	# str_edge_recomputed = str_edge_recomputed + format(recomputed[6],'.4f') + ' '
+	# str_edge_recomputed = str_edge_recomputed + format(recomputed[7],'.4f') + ' '
+	# str_edge_recomputed = str_edge_recomputed + format(recomputed[8],'.4f')
+	# str_edge_recomputed = str_edge_recomputed + '\n'
+	# index_point = index_point + 1
 
 
 str_edge = ''
@@ -284,8 +285,54 @@ for edge in points:
 	index_point = index_point + 1
 
 f_handle_w.write(str_vertex)
-# f_handle_w.write(str_edge)
-f_handle_w.write(str_edge_recomputed)
+f_handle_w.write(str_edge)
+# f_handle_w.write(str_edge_recomputed)
 
+
+# find 10 closest vertices for every vertex
+# also test if the icp result is bad, if good only add the EDGE constraint
+
+
+myscreen = curses.initscr()
+myscreen.addstr(12,25,'Recomputing ICP, 0/%(total_points)d' % {'total_points':len(points)})
+myscreen.refresh()
+
+str_edge_added = ''
+index_point = 0
+for vertex in points_2d:
+	dist, ind = tree_points.query(vertex, k=51)
+	threshold_ind  = []
+	threshold_dist = []
+
+	no_of_added_edge = 0
+	for idist, iind in zip (dist, ind):
+		if idist > 2 and idist < 5:
+			threshold_ind.append(iind)
+			threshold_dist.append(idist)
+			no_of_added_edge = no_of_added_edge + 1
+		if no_of_added_edge > 10:
+			break
+
+	# print vertex, index_point, threshold_ind, threshold_dist
+	for idist, iind in zip (threshold_dist, threshold_ind):
+		str_edge_added = str_edge_added + 'EDGE2 '
+		str_edge_added = str_edge_added + format(iind+1,'d') + ' '
+		str_edge_added = str_edge_added + format(index_point+1,'d') + ' '
+		myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point,'total_points':len(points)})
+		myscreen.refresh()
+		icp_edge = computeICPBetweenScans(index_point, iind)
+		str_edge_added = str_edge_added + format(icp_edge[0],'.4f') + ' '
+		str_edge_added = str_edge_added + format(icp_edge[1],'.4f') + ' '
+		str_edge_added = str_edge_added + format(icp_edge[2],'.4f') + ' '
+		str_edge_added = str_edge_added + format(icp_edge[3],'.4f') + ' '
+		str_edge_added = str_edge_added + format(icp_edge[4],'.4f') + ' '
+		str_edge_added = str_edge_added + format(icp_edge[5],'.4f') + ' '
+		str_edge_added = str_edge_added + format(icp_edge[6],'.4f') + ' '
+		str_edge_added = str_edge_added + format(icp_edge[7],'.4f') + ' '
+		str_edge_added = str_edge_added + format(icp_edge[8],'.4f') + ' '
+		str_edge_added = str_edge_added + '\n'
+	# print index_point, len(threshold_ind) 
+	index_point = index_point + 1
+
+f_handle_w.write(str_edge_added)
 curses.endwin()
-
