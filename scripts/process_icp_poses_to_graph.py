@@ -55,7 +55,7 @@ def publishScan(no):
 	pc_point_t = pc2.create_cloud_xyz32(header, H_points)
 	g_pub_ros.publish(pc_point_t)
 
-rospy.wait_for_service('processICP')
+# rospy.wait_for_service('processICP')
 g_processICP_srv = rospy.ServiceProxy('processICP', processICP)
 def computeICPBetweenScans(no1,no2):
 	header = Header()
@@ -68,24 +68,33 @@ def computeICPBetweenScans(no1,no2):
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no1)+'.txt')
 
 	H_points = [[p[0], p[1],1] for p in test_cloud]
+	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
 	pc_point_t1 = pc2.create_cloud_xyz32(header, H_points)
 	# print 'text1: ',len(test_cloud)
 	# print test_cloud
-	example.load_2d_array('ref_map',np.array(test_cloud, np.float32)) 
+	# example.load_2d_array('ref_map',np.array(test_cloud, np.float32)) 
 
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
+	test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no2)+'.txt')
 
-	H_points = [[p[0], p[1],1] for p in test_cloud]
+	H_points = [[p[0], p[1],1] for p in test_cloud2]
+	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
 	pc_point_t2 = pc2.create_cloud_xyz32(header, H_points)
 	# print 'text2: ',len(test_cloud)
-	example.load_2d_array('que_map',np.array(test_cloud, np.float32)) 
+	# example.load_2d_array('que_map',np.array(test_cloud, np.float32)) 
 	# names = example.get_point_xyz_clouds_names()
 	# print("Current point clouds: " + ",".join(names))
-	icp_ros_result = g_processICP_srv(pc_point_t1, pc_point_t2)
+
+	# icp_ros_result = g_processICP_srv(pc_point_t1, pc_point_t2)
 	# print icp_ros_result
-	# return example.processICP()
-	return icp_ros_result.result.pose.pose.position.x, icp_ros_result.result.pose.pose.position.y, icp_ros_result.result.pose.pose.position.z,icp_ros_result.result.pose.covariance[0],icp_ros_result.result.pose.covariance[1],icp_ros_result.result.pose.covariance[2],icp_ros_result.result.pose.covariance[3],icp_ros_result.result.pose.covariance[4],icp_ros_result.result.pose.covariance[5]
+
+
+	# cython_icp_result = example.processICP(np.array(test_cloud, np.float32),np.array(test_cloud2, np.float32))
+	cython_icp_result = example.processICP(np.array([x[0] for x in test_cloud], np.float32),np.array([x[1] for x in test_cloud], np.float32),np.array([x[0] for x in test_cloud2], np.float32),np.array([x[1] for x in test_cloud2], np.float32))
+	print cython_icp_result
+	return cython_icp_result
+
+	# return icp_ros_result.result.pose.pose.position.x, icp_ros_result.result.pose.pose.position.y, icp_ros_result.result.pose.pose.position.z,icp_ros_result.result.pose.covariance[0],icp_ros_result.result.pose.covariance[1],icp_ros_result.result.pose.covariance[2],icp_ros_result.result.pose.covariance[3],icp_ros_result.result.pose.covariance[4],icp_ros_result.result.pose.covariance[5]
 
 # example = cython_catkin_example.PyCCExample()
 # # test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_6.txt')
