@@ -20,6 +20,7 @@ from scipy.spatial import KDTree
 # f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
 f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','r')
 # f_handle_w = open('icp_poses.graph','w')
+f_handle_w = open('icp_poses_lm.graph','w')
 
 
 def getFloatNumberFromReadLines(f_handle, no_params):
@@ -69,8 +70,9 @@ def computeICPBetweenScans(no1,no2):
 
 	example = cython_catkin_example.PyCCExample()
 
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no1)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no1)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no1)+'.txt')
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no1)+'.txt')
 
 	H_points = [[p[0], p[1],1] for p in test_cloud]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
@@ -79,8 +81,9 @@ def computeICPBetweenScans(no1,no2):
 	# print test_cloud
 	# example.load_2d_array('ref_map',np.array(test_cloud, np.float32)) 
 
-	test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
+	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no2)+'.txt')
+	test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no2)+'.txt')
 
 	H_points = [[p[0], p[1],1] for p in test_cloud2]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
@@ -241,9 +244,9 @@ class AnimatedScatter(object):
 		_to_clear = _to_clear + [self.scatter_map]
 		return _to_clear
 
-AnimatedScatter()
-plt.show()
-exit()
+# AnimatedScatter()
+# plt.show()
+# exit()
 
 
 
@@ -304,13 +307,13 @@ myscreen.refresh()
 str_edge_added = ''
 index_point = 0
 for vertex in points_2d:
-	dist, ind = tree_points.query(vertex, k=21)
+	dist, ind = tree_points.query(vertex, k=31) #21
 	threshold_ind  = []
 	threshold_dist = []
 
 	no_of_added_edge = 0
 	for idist, iind in zip (dist, ind):
-		if idist > 2.5 and idist < 4.0:
+		if idist > 2.5:# and idist < 4.0:
 			threshold_ind.append(iind)
 			threshold_dist.append(idist)
 			no_of_added_edge = no_of_added_edge + 1
