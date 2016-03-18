@@ -17,10 +17,10 @@ import matplotlib.animation as animation
 
 from scipy.spatial import KDTree
 
-# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
-f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','r')
-# f_handle_w = open('icp_poses.graph','w')
-f_handle_w = open('icp_poses_lm.graph','w')
+f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','r')
+f_handle_w = open('icp_poses.graph','w')
+# f_handle_w = open('icp_poses_lm.graph','w')
 
 
 def getFloatNumberFromReadLines(f_handle, no_params):
@@ -63,16 +63,17 @@ def publishScan(no):
 
 # rospy.wait_for_service('processICP')
 g_processICP_srv = rospy.ServiceProxy('processICP', processICP)
-def computeICPBetweenScans(no1,no2):
+def computeICPBetweenScans(no1,no2, init_x = 0 , init_y = 0, init_yaw = 0):
 	header = Header()
 	header.stamp = rospy.Time.now()
 	header.frame_id = 'ibeo'
 
 	example = cython_catkin_example.PyCCExample()
 
-	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no1)+'.txt')
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no1)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no1)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no1)+'.txt')
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no1)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no1)+'.txt')
 
 	H_points = [[p[0], p[1],1] for p in test_cloud]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
@@ -81,9 +82,10 @@ def computeICPBetweenScans(no1,no2):
 	# print test_cloud
 	# example.load_2d_array('ref_map',np.array(test_cloud, np.float32)) 
 
-	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
+	test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
+	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no2)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no2)+'.txt')
-	test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no2)+'.txt')
+	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no2)+'.txt')
 
 	H_points = [[p[0], p[1],1] for p in test_cloud2]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
@@ -98,7 +100,7 @@ def computeICPBetweenScans(no1,no2):
 
 
 	# cython_icp_result = example.processICP(np.array(test_cloud, np.float32),np.array(test_cloud2, np.float32))
-	cython_icp_result = example.processICP(np.array([x[0] for x in test_cloud], np.float32),np.array([x[1] for x in test_cloud], np.float32),np.array([x[0] for x in test_cloud2], np.float32),np.array([x[1] for x in test_cloud2], np.float32))
+	cython_icp_result = example.processICP(np.array([x[0] for x in test_cloud], np.float32),np.array([x[1] for x in test_cloud], np.float32),np.array([x[0] for x in test_cloud2], np.float32),np.array([x[1] for x in test_cloud2], np.float32), init_x, init_y, init_yaw)
 	# print cython_icp_result
 	return cython_icp_result
 
@@ -299,6 +301,14 @@ f_handle_w.write(str_edge)
 # find 10 closest vertices for every vertex
 # also test if the icp result is bad, if good only add the EDGE constraint
 
+def getInitialValues(no1,no2):
+	no1_pose = points[no1]
+	no2_pose = points[no2]
+	x = no2_pose[0] - no1_pose[0]
+	y = no2_pose[1] - no1_pose[1]
+	yaw = no2_pose[2] - no1_pose[2]
+	return x,y,yaw
+
 
 myscreen = curses.initscr()
 myscreen.addstr(12,25,'Recomputing ICP, 0/%(total_points)d' % {'total_points':len(points)})
@@ -307,25 +317,28 @@ myscreen.refresh()
 str_edge_added = ''
 index_point = 0
 for vertex in points_2d:
-	dist, ind = tree_points.query(vertex, k=31) #21
+	dist, ind = tree_points.query(vertex, k=21) #21
 	threshold_ind  = []
 	threshold_dist = []
 
 	no_of_added_edge = 0
 	for idist, iind in zip (dist, ind):
-		if idist > 2.5:# and idist < 4.0:
+		# if idist > 2.5 and idist < 10. and abs(index_point - iind) > 10:# > 2.5 and idist < 4.0:
+		if idist < 10. and abs(index_point - iind) > 10:# > 2.5 and idist < 4.0:
 			threshold_ind.append(iind)
 			threshold_dist.append(idist)
 			no_of_added_edge = no_of_added_edge + 1
-		if no_of_added_edge > 8:
+		if no_of_added_edge > 8:#8:
 			break
 
 	# print vertex, index_point, threshold_ind, threshold_dist
 	for idist, iind in zip (threshold_dist, threshold_ind):
+		# init_val = getInitialValues(index_point, iind)
+		# icp_edge = computeICPBetweenScans(index_point, iind, init_val[0], init_val[1], init_val[2])
 		icp_edge = computeICPBetweenScans(index_point, iind)
 		myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point+2,'total_points':len(points)})
 		myscreen.refresh()
-		if icp_edge[9] > 0.82:
+		if icp_edge[9] > 0.8: #0.82:
 			str_edge_added = str_edge_added + 'EDGE2 '
 			str_edge_added = str_edge_added + format(iind+1,'d') + ' '
 			str_edge_added = str_edge_added + format(index_point+1,'d') + ' '

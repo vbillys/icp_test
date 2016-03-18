@@ -14,12 +14,12 @@ import matplotlib.animation as animation
 
 
 f_handle_pose = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
-# f_handle2 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.graph','r')
-# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses-treeopt-initial.graph','r')
-# f_handle3 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses-treeopt-final.graph','r')
-f_handle2 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses_lm.graph','r')
-f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses_lm-treeopt-initial.graph','r')
-f_handle3 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses_lm-treeopt-final.graph','r')
+f_handle2 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.graph','r')
+f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses-treeopt-initial.graph','r')
+f_handle3 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses-treeopt-final.graph','r')
+# f_handle2 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses_lm.graph','r')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses_lm-treeopt-initial.graph','r')
+# f_handle3 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses_lm-treeopt-final.graph','r')
 
 
 def getFloatNumberFromReadLines(f_handle, no_params):
@@ -64,7 +64,8 @@ def getVertexFromGraph(f_handle, no_vertex, processed=False):
 		points.append([noid]+coord)
 	return points
 
-ng = 43 # 2433
+# ng = 43 # 2433
+ng = 1700 #  2433
 
 vertices2 =  getVertexFromGraph(f_handle2, ng)
 vertices =  getVertexFromGraph(f_handle, ng, True)
@@ -80,17 +81,17 @@ ax.set_aspect('equal','datalim')
 # plt.show(False)
 point_t = []
 checkpoints = 0
-plt.plot([o[1] for o in vertices],[-o[2] for o in vertices])
-plt.plot([o[1] for o in vertices2],[o[2] for o in vertices2])
+# plt.plot([o[1] for o in vertices],[-o[2] for o in vertices])
+# plt.plot([o[1] for o in vertices2],[o[2] for o in vertices2])
 plt.plot([o[1] for o in vertices3],[-o[2] for o in vertices3])
 # # plt.plot([o[0] for o in points],[o[1] for o in points])
 for vertex in vertices3:
 # for point in points:
-	if checkpoints % 25 == 0:
-		test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(vertex[0])+'.txt')
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(vertex[0])+'.txt')
+	if checkpoints % 25 == 0: #25
+		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(vertex[0])+'.txt')
+		test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(vertex[0])+'.txt')
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(checkpoints)+'.txt')
-		t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(vertex[1],vertex[2],-vertex[3]))
+		t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(vertex[1],-vertex[2],-vertex[3]))
 		# t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(point[0],point[1],-point[2]))
 		point_t = point_t + t_point_t
 	checkpoints = checkpoints + 1
