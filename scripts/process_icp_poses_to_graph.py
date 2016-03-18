@@ -17,8 +17,9 @@ import matplotlib.animation as animation
 
 from scipy.spatial import KDTree
 
-f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
-f_handle_w = open('icp_poses.graph','w')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
+f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','r')
+# f_handle_w = open('icp_poses.graph','w')
 
 
 def getFloatNumberFromReadLines(f_handle, no_params):
@@ -146,15 +147,17 @@ def plotScan(no, ax):
 
 
 def plotScanTransformed(no, ax, tm):
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no)+'.txt')
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no)+'.txt')
 	point_t = transformCloud(test_cloud, tm)
 	ax.set_offsets(np.column_stack(([x[0] for x in point_t],[x[1] for x in point_t])))
 
 def plotMapTransformed(no, ax, tm, map_xx, map_yy):
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no+1)+'.txt')
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no)+'.txt')
 	point_t = transformCloud(test_cloud, tm)
 	map_xx = map_xx + [x[0] for x in point_t]
 	map_yy = map_yy + [x[1] for x in point_t]
@@ -194,7 +197,7 @@ class AnimatedScatter(object):
 	def setup_plot(self):
 		print 'hi setup anim'
 		self.scatter_scan = self.ax.scatter ([],[], color='blue', s=8)
-		self.scatter_map = self.ax.scatter ([],[], color='green', s=4)
+		self.scatter_map = self.ax.scatter ([],[], color='green', s=.4)
 		return self.scatter_scan, self.scatter_map
 	def update(self,i):
 		print 'updating figure...', i
@@ -204,16 +207,16 @@ class AnimatedScatter(object):
 		# print points[i+1]
 		# publishScan(i)
 
-		# yaw = points[i][2]
-		# x = points[i][0]
-		# y = points[i][1]
-		if i == 0:
-			yaw = 0
-			x = 0
-			y = 0
-		else:
-			icp_result = computeICPBetweenScans(i-1,i)
-			x,y,yaw = accumulateIcpTransform(icp_result,self.last_x,self.last_y,self.last_yaw)
+		yaw = points[i][2]
+		x = points[i][0]
+		y = points[i][1]
+		# if i == 0:
+			# yaw = 0
+			# x = 0
+			# y = 0
+		# else:
+			# icp_result = computeICPBetweenScans(i-1,i)
+			# x,y,yaw = accumulateIcpTransform(icp_result,self.last_x,self.last_y,self.last_yaw)
 		self.travelled_dist = self.travelled_dist + math.hypot(self.last_x - x, self.last_y - y)
 		# print self.travelled_dist, self.next_capture_dist
 		self.last_x = x
@@ -226,7 +229,8 @@ class AnimatedScatter(object):
 		# plotScan(i, self.scatter_scan)
 		plotScanTransformed(i, self.scatter_scan, tranformation_matrix)
 		if self.travelled_dist > self.next_capture_dist:
-			self.next_capture_dist = self.next_capture_dist + g_thresh
+			while self.travelled_dist > self.next_capture_dist:
+				self.next_capture_dist = self.next_capture_dist + g_thresh
 			# if self._to_clear_2 is not None:
 			self.points_map_x, self.points_map_y = plotMapTransformed(i, self.scatter_map, tranformation_matrix, self.points_map_x, self.points_map_y)
 			# self._to_clear_2 = _to_clear_2
@@ -237,9 +241,9 @@ class AnimatedScatter(object):
 		_to_clear = _to_clear + [self.scatter_map]
 		return _to_clear
 
-# AnimatedScatter()
-# plt.show()
-# exit()
+AnimatedScatter()
+plt.show()
+exit()
 
 
 
@@ -300,37 +304,38 @@ myscreen.refresh()
 str_edge_added = ''
 index_point = 0
 for vertex in points_2d:
-	dist, ind = tree_points.query(vertex, k=51)
+	dist, ind = tree_points.query(vertex, k=21)
 	threshold_ind  = []
 	threshold_dist = []
 
 	no_of_added_edge = 0
 	for idist, iind in zip (dist, ind):
-		if idist > 2 and idist < 5:
+		if idist > 2.5 and idist < 4.0:
 			threshold_ind.append(iind)
 			threshold_dist.append(idist)
 			no_of_added_edge = no_of_added_edge + 1
-		if no_of_added_edge > 10:
+		if no_of_added_edge > 8:
 			break
 
 	# print vertex, index_point, threshold_ind, threshold_dist
 	for idist, iind in zip (threshold_dist, threshold_ind):
-		str_edge_added = str_edge_added + 'EDGE2 '
-		str_edge_added = str_edge_added + format(iind+1,'d') + ' '
-		str_edge_added = str_edge_added + format(index_point+1,'d') + ' '
-		myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point,'total_points':len(points)})
-		myscreen.refresh()
 		icp_edge = computeICPBetweenScans(index_point, iind)
-		str_edge_added = str_edge_added + format(icp_edge[0],'.4f') + ' '
-		str_edge_added = str_edge_added + format(icp_edge[1],'.4f') + ' '
-		str_edge_added = str_edge_added + format(icp_edge[2],'.4f') + ' '
-		str_edge_added = str_edge_added + format(icp_edge[3],'.4f') + ' '
-		str_edge_added = str_edge_added + format(icp_edge[4],'.4f') + ' '
-		str_edge_added = str_edge_added + format(icp_edge[5],'.4f') + ' '
-		str_edge_added = str_edge_added + format(icp_edge[6],'.4f') + ' '
-		str_edge_added = str_edge_added + format(icp_edge[7],'.4f') + ' '
-		str_edge_added = str_edge_added + format(icp_edge[8],'.4f') + ' '
-		str_edge_added = str_edge_added + '\n'
+		myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point+2,'total_points':len(points)})
+		myscreen.refresh()
+		if icp_edge[9] > 0.82:
+			str_edge_added = str_edge_added + 'EDGE2 '
+			str_edge_added = str_edge_added + format(iind+1,'d') + ' '
+			str_edge_added = str_edge_added + format(index_point+1,'d') + ' '
+			str_edge_added = str_edge_added + format(icp_edge[0],'.4f') + ' '
+			str_edge_added = str_edge_added + format(icp_edge[1],'.4f') + ' '
+			str_edge_added = str_edge_added + format(icp_edge[2],'.4f') + ' '
+			str_edge_added = str_edge_added + format(icp_edge[3],'.4f') + ' '
+			str_edge_added = str_edge_added + format(icp_edge[4],'.4f') + ' '
+			str_edge_added = str_edge_added + format(icp_edge[5],'.4f') + ' '
+			str_edge_added = str_edge_added + format(icp_edge[6],'.4f') + ' '
+			str_edge_added = str_edge_added + format(icp_edge[7],'.4f') + ' '
+			str_edge_added = str_edge_added + format(icp_edge[8],'.4f') + ' '
+			str_edge_added = str_edge_added + '\n'
 	# print index_point, len(threshold_ind) 
 	index_point = index_point + 1
 
