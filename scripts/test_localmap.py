@@ -178,9 +178,9 @@ icp_plot = []
 for n in range (0, len(test_poses)):
 	test_local_map = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_' + str(n) + '.txt')
 	# print test_poses[n]
-	random_x = np.random.normal(0,5)
-	random_y = np.random.normal(0,5)
-	random_yaw = np.random.normal(0,math.radians(30))
+	random_x = np.random.normal(0,.5)
+	random_y = np.random.normal(0,.5)
+	random_yaw = np.random.normal(0,math.radians(5))
 
 	# icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0], test_poses[n][1], test_poses[n][2])
 	# icp_pose = computeICPBetweenScans(point_t, test_local_map)
@@ -194,12 +194,12 @@ for n in range (0, len(test_poses)):
 		# odom_plot.append([test_poses[n][0],test_poses[n][1]])
 		icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
 	else:
-		_x = test_poses[n][0] - test_poses[n-1][0] + icp_pose[0]
-		_y = test_poses[n][1] - test_poses[n-1][1] + icp_pose[1]
-		_yaw = test_poses[n][2] - test_poses[n-1][2] + icp_pose[2]
+		_x = test_poses[n][0] - test_poses[n-1][0] + icp_pose[0]+random_x
+		_y = test_poses[n][1] - test_poses[n-1][1] + icp_pose[1]+random_y
+		_yaw = test_poses[n][2] - test_poses[n-1][2] + icp_pose[2]+random_yaw
 		odom_plot.append([_x,_y])
-		# icp_pose = computeICPBetweenScans(point_t, test_local_map, _x, _y, _yaw)
-		icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
+		icp_pose = computeICPBetweenScans(point_t, test_local_map, _x, _y, _yaw)
+		# icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
 
 	vertices_plot.append([graphVertices[int(test_poses[n][-1])][1],graphVertices[int(test_poses[n][-1])][2]])
 	icp_plot.append([icp_pose[0],icp_pose[1]])
