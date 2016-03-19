@@ -144,7 +144,7 @@ def getVertexFromGraph(f_handle, no_vertex, processed=False):
 		strs_splitted =  strs.split()
 		noid = int(strs_splitted[1])
 		if processed:
-			coord = [-float(strs_splitted[2]), -float(strs_splitted[3]), -float(strs_splitted[4])]
+			coord = [-float(strs_splitted[2]), float(strs_splitted[3]), -float(strs_splitted[4])]
 		else:
 			coord = [float(strs_splitted[2]), float(strs_splitted[3]), float(strs_splitted[4])]
 		points.append([noid]+coord)
@@ -167,9 +167,9 @@ ax.set_aspect('equal','datalim')
 # plt.show(False)
 point_t = []
 checkpoints = 0
-# plt.plot([o[1] for o in vertices],[-o[2] for o in vertices])
+# plt.plot([o[1] for o in vertices],[o[2] for o in vertices])
 # plt.plot([o[1] for o in vertices2],[o[2] for o in vertices2])
-plt.plot([o[1] for o in vertices3],[-o[2] for o in vertices3])
+plt.plot([o[1] for o in vertices3],[o[2] for o in vertices3])
 # # plt.plot([o[0] for o in points],[o[1] for o in points])
 
 g_thresh = 10
@@ -189,7 +189,7 @@ for vertex in vertices3:
 		if travelled_dist > next_capture_dist:
 			while travelled_dist > next_capture_dist:
 				next_capture_dist = next_capture_dist + g_thresh
-			t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(vertex[1],-vertex[2],-vertex[3]))
+			t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(vertex[1],vertex[2],-vertex[3]))
 			# t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(point[0],point[1],-point[2]))
 			point_t = point_t + t_point_t
 	checkpoints = checkpoints + 1
@@ -203,9 +203,9 @@ def saveCloud2DToFile(f_h, points_2d):
 def saveCloud2DToFileCompressed(f_h, points_2d):
 	f_h.write(zlib.compress("".join([" ".join(format(x, ".6f") for x in p) + "\n" for p in points_2d]), 5))
 
-f_handle_save_map = open('/home/avavav/avdata/alphard/medialink/20150918-180619/map.txt', 'w')
-# saveCloud2DToFile(f_handle_save_map, point_t)
-saveCloud2DToFileCompressed(f_handle_save_map, point_t)
+# f_handle_save_map = open('/home/avavav/avdata/alphard/medialink/20150918-180619/map.txt', 'w')
+# # saveCloud2DToFile(f_handle_save_map, point_t)
+# saveCloud2DToFileCompressed(f_handle_save_map, point_t)
 
 
 start = time.time()
