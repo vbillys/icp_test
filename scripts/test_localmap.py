@@ -172,28 +172,44 @@ test_poses = getFloatNumberFromReadLines(open('/home/avavav/avdata/alphard/media
 # n = 1 
 vertices_plot = []
 odom_plot = []
+only_odom_accum_plot = []
 icp_plot = []
+# icp_corrections = [0,0,0]
 for n in range (0, len(test_poses)):
 	test_local_map = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_' + str(n) + '.txt')
 	# print test_poses[n]
-	random_x = np.random.normal(0,1)
-	random_y = np.random.normal(0,1)
-	random_yaw = np.random.normal(0,math.radians(10))
-	icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
+	random_x = np.random.normal(0,5)
+	random_y = np.random.normal(0,5)
+	random_yaw = np.random.normal(0,math.radians(30))
+
 	# icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0], test_poses[n][1], test_poses[n][2])
 	# icp_pose = computeICPBetweenScans(point_t, test_local_map)
 	# print icp_pose
 	# print graphVertices[int(test_poses[n][-1])]
-	odom_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
-	# odom_plot.append([test_poses[n][0],test_poses[n][1]])
+
+	only_odom_accum_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
+
+	if n == 0:
+		odom_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
+		# odom_plot.append([test_poses[n][0],test_poses[n][1]])
+		icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
+	else:
+		_x = test_poses[n][0] - test_poses[n-1][0] + icp_pose[0]
+		_y = test_poses[n][1] - test_poses[n-1][1] + icp_pose[1]
+		_yaw = test_poses[n][2] - test_poses[n-1][2] + icp_pose[2]
+		odom_plot.append([_x,_y])
+		# icp_pose = computeICPBetweenScans(point_t, test_local_map, _x, _y, _yaw)
+		icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
+
 	vertices_plot.append([graphVertices[int(test_poses[n][-1])][1],graphVertices[int(test_poses[n][-1])][2]])
 	icp_plot.append([icp_pose[0],icp_pose[1]])
 
 # test_local_map_aligned = transformCloud(test_local_map, createTransfromFromXYYaw(icp_pose[0], icp_pose[1], -icp_pose[2]))
 # ax.scatter ([x[0] for x in test_local_map_aligned ],[x[1] for x in test_local_map_aligned ], color='blue', s=1.3)
 
-plt.plot([x[0] for x in odom_plot], [x[1] for x in odom_plot], color='blue', lw=2)
-plt.plot([x[0] for x in vertices_plot], [x[1] for x in vertices_plot], color='red', lw=2, marker = '^', ms=10)
+plt.plot([x[0] for x in only_odom_accum_plot], [x[1] for x in only_odom_accum_plot], color='orange', lw=3, linestyle='--')
+plt.plot([x[0] for x in odom_plot], [x[1] for x in odom_plot], color='blue', lw=3)
+plt.plot([x[0] for x in vertices_plot], [x[1] for x in vertices_plot], color='red', lw=3, marker = '^', ms=10)
 plt.plot([x[0] for x in icp_plot], [x[1] for x in icp_plot], color='cyan', linestyle='-', marker='o', lw=2)
 
 plt.show(True)
