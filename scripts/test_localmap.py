@@ -174,13 +174,13 @@ vertices_plot = []
 odom_plot = []
 only_odom_accum_plot = []
 icp_plot = []
-# icp_corrections = [0,0,0]
-for n in range (0, len(test_poses)):
+# initial_error = [5,5,math.radians(10)]
+for n in range (10, len(test_poses)):
 	test_local_map = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_' + str(n) + '.txt')
 	# print test_poses[n]
-	random_x = np.random.normal(0,.5)
-	random_y = np.random.normal(0,.5)
-	random_yaw = np.random.normal(0,math.radians(5))
+	random_x = 0#np.random.normal(0,.5)
+	random_y = 0#np.random.normal(0,.5)
+	random_yaw = 0#np.random.normal(0,math.radians(5))
 
 	# icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0], test_poses[n][1], test_poses[n][2])
 	# icp_pose = computeICPBetweenScans(point_t, test_local_map)
@@ -189,7 +189,13 @@ for n in range (0, len(test_poses)):
 
 	only_odom_accum_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
 
-	if n == 0:
+	if n == 10:
+		random_x = np.random.normal(0,10.5)
+		random_y = np.random.normal(0,10.5)
+		random_yaw = np.random.normal(0,math.radians(35))
+		# random_x = initial_error[0]
+		# random_y = initial_error[1]
+		# random_yaw = initial_error[2]
 		odom_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
 		# odom_plot.append([test_poses[n][0],test_poses[n][1]])
 		icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
