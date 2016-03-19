@@ -112,7 +112,7 @@ def translateScan2D(points_2d, x, y):
 
 def getLocalMap(indexes):
 	ref_node_index = indexes[1]
-	pose_local_map = points[ref_node_index]
+	pose_local_map = list(points[ref_node_index]) + [int(ref_node_index)]
 	local_map = []
 	for iid in indexes[0]:
 		if iid == ref_node_index:
