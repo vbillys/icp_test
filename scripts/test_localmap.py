@@ -168,18 +168,34 @@ ax.scatter ([x[0] for x in point_t],[x[1] for x in point_t], color='green', s=.3
 
 graphVertices = getVertexFromGraph(f_handle_processed_graph, 1700, True)
 
-n = 1 
-test_local_map = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_' + str(n) + '.txt')
 test_poses = getFloatNumberFromReadLines(open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','r'), 13)
-print test_poses[n]
-icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0], test_poses[n][1], test_poses[n][2])
-# icp_pose = computeICPBetweenScans(point_t, test_local_map)
-print icp_pose
-# print int(test_poses[n][-1])
-# print len(graphVertices)
-print graphVertices[int(test_poses[n][-1])]
-test_local_map_aligned = transformCloud(test_local_map, createTransfromFromXYYaw(icp_pose[0], icp_pose[1], -icp_pose[2]))
-ax.scatter ([x[0] for x in test_local_map_aligned ],[x[1] for x in test_local_map_aligned ], color='blue', s=1.3)
+# n = 1 
+vertices_plot = []
+odom_plot = []
+icp_plot = []
+for n in range (0, len(test_poses)):
+	test_local_map = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_' + str(n) + '.txt')
+	# print test_poses[n]
+	random_x = np.random.normal(0,1)
+	random_y = np.random.normal(0,1)
+	random_yaw = np.random.normal(0,math.radians(10))
+	icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
+	# icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0], test_poses[n][1], test_poses[n][2])
+	# icp_pose = computeICPBetweenScans(point_t, test_local_map)
+	# print icp_pose
+	# print graphVertices[int(test_poses[n][-1])]
+	odom_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
+	# odom_plot.append([test_poses[n][0],test_poses[n][1]])
+	vertices_plot.append([graphVertices[int(test_poses[n][-1])][1],graphVertices[int(test_poses[n][-1])][2]])
+	icp_plot.append([icp_pose[0],icp_pose[1]])
+
+# test_local_map_aligned = transformCloud(test_local_map, createTransfromFromXYYaw(icp_pose[0], icp_pose[1], -icp_pose[2]))
+# ax.scatter ([x[0] for x in test_local_map_aligned ],[x[1] for x in test_local_map_aligned ], color='blue', s=1.3)
+
+plt.plot([x[0] for x in odom_plot], [x[1] for x in odom_plot], color='blue', lw=2)
+plt.plot([x[0] for x in vertices_plot], [x[1] for x in vertices_plot], color='red', lw=2, marker = '^', ms=10)
+plt.plot([x[0] for x in icp_plot], [x[1] for x in icp_plot], color='cyan', linestyle='-', marker='o', lw=2)
+
 plt.show(True)
 
 
