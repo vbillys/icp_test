@@ -98,10 +98,16 @@ class ZipInputStream:
 ## source language.
 ##     -- Donald E. Knuth, December 1974
 
-f_handle_pose = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
-f_handle2 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.graph','r')
-f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses-treeopt-initial.graph','r')
-f_handle3 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses-treeopt-final.graph','r')
+# f_handle_pose = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
+# f_handle2 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.graph','r')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses-treeopt-initial.graph','r')
+# f_handle3 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses-treeopt-final.graph','r')
+
+f_handle_pose = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses.txt','r')
+f_handle2 = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses.graph','r')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses-treeopt-initial.graph','r')
+# f_handle3 = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses-treeopt-final.graph','r')
+
 # f_handle2 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses_lm.graph','r')
 # f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses_lm-treeopt-initial.graph','r')
 # f_handle3 = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses_lm-treeopt-final.graph','r')
@@ -151,12 +157,12 @@ def getVertexFromGraph(f_handle, no_vertex, processed=False):
 	return points
 
 # ng = 43 # 2433
-ng = 1700 #  2433
+ng = 1015 #1700 #  2433
 
 vertices2 =  getVertexFromGraph(f_handle2, ng)
-vertices =  getVertexFromGraph(f_handle, ng, True)
-vertices3 =  getVertexFromGraph(f_handle3, ng, True)
-points = getFloatNumberFromReadLines(f_handle_pose, 12)
+# vertices =  getVertexFromGraph(f_handle, ng, True)
+# vertices3 =  getVertexFromGraph(f_handle3, ng, True)
+# points = getFloatNumberFromReadLines(f_handle_pose, 12)
 
 fig, ax = plt.subplots()
 ax.axis([-200, 100, -100, 200])
@@ -168,20 +174,20 @@ ax.set_aspect('equal','datalim')
 point_t = []
 checkpoints = 0
 # plt.plot([o[1] for o in vertices],[o[2] for o in vertices])
-# plt.plot([o[1] for o in vertices2],[o[2] for o in vertices2])
-plt.plot([o[1] for o in vertices3],[o[2] for o in vertices3])
+plt.plot([o[1] for o in vertices2],[o[2] for o in vertices2])
+# plt.plot([o[1] for o in vertices3],[o[2] for o in vertices3])
 # # plt.plot([o[0] for o in points],[o[1] for o in points])
 
-g_thresh = 10
+g_thresh =10 
 travelled_dist = 0 
 last_x = 0
 last_y = 0
 next_capture_dist = 0- g_thresh
-for vertex in vertices3:
+for vertex in vertices2:
 # for point in points:
 	if checkpoints % 1 == 0: #25
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(vertex[0])+'.txt')
-		test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(vertex[0])+'.txt')
+		test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_filtered_'+str(vertex[0])+'.txt')
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(checkpoints)+'.txt')
 		travelled_dist = travelled_dist + math.hypot(last_x - vertex[1], last_y - vertex[2])
 		last_x = vertex[1]
@@ -204,12 +210,14 @@ def saveCloud2DToFileCompressed(f_h, points_2d):
 	f_h.write(zlib.compress("".join([" ".join(format(x, ".6f") for x in p) + "\n" for p in points_2d]), 5))
 
 # f_handle_save_map = open('/home/avavav/avdata/alphard/medialink/20150918-180619/map.txt', 'w')
-# # saveCloud2DToFile(f_handle_save_map, point_t)
-# saveCloud2DToFileCompressed(f_handle_save_map, point_t)
+f_handle_save_map = open('/home/avavav/avdata/alphard/medialink/20150918-174721/map.txt', 'w')
+# saveCloud2DToFile(f_handle_save_map, point_t)
+saveCloud2DToFileCompressed(f_handle_save_map, point_t)
 
 
 start = time.time()
-f_handle_open_map = open('/home/avavav/avdata/alphard/medialink/20150918-180619/map.txt', 'rb')
+# f_handle_open_map = open('/home/avavav/avdata/alphard/medialink/20150918-180619/map.txt', 'rb')
+f_handle_open_map = open('/home/avavav/avdata/alphard/medialink/20150918-174721/map.txt', 'rb')
 data = f_handle_open_map.read()
 file = ZipInputStream(StringIO.StringIO(data))
 lines = file.readlines()
