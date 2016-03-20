@@ -17,7 +17,8 @@ import matplotlib.animation as animation
 
 from scipy.spatial import KDTree
 
-f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
+f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses.txt','r')
 # f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','r')
 f_handle_w = open('icp_poses.graph','w')
 # f_handle_w = open('icp_poses_lm.graph','w')
@@ -153,16 +154,18 @@ def plotScan(no, ax):
 
 def plotScanTransformed(no, ax, tm):
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_'+str(no)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no)+'.txt')
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no)+'.txt')
 	point_t = transformCloud(test_cloud, tm)
 	ax.set_offsets(np.column_stack(([x[0] for x in point_t],[x[1] for x in point_t])))
 
 def plotMapTransformed(no, ax, tm, map_xx, map_yy):
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no)+'.txt')
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_filtered_'+str(no)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no+1)+'.txt')
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no)+'.txt')
 	point_t = transformCloud(test_cloud, tm)
 	map_xx = map_xx + [x[0] for x in point_t]
 	map_yy = map_yy + [x[1] for x in point_t]
@@ -297,6 +300,7 @@ f_handle_w.write(str_vertex)
 f_handle_w.write(str_edge)
 # f_handle_w.write(str_edge_recomputed)
 
+exit()
 
 # find 10 closest vertices for every vertex
 # also test if the icp result is bad, if good only add the EDGE constraint
@@ -335,7 +339,8 @@ for vertex in points_2d:
 	for idist, iind in zip (threshold_dist, threshold_ind):
 		# init_val = getInitialValues(index_point, iind)
 		# icp_edge = computeICPBetweenScans(index_point, iind, init_val[0], init_val[1], init_val[2])
-		icp_edge = computeICPBetweenScans(index_point, iind)
+		# icp_edge = computeICPBetweenScans(index_point, iind)
+		icp_edge = computeICPBetweenScans(index_point, iind+1)
 		myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point+2,'total_points':len(points)})
 		myscreen.refresh()
 		if icp_edge[9] > 0.8: #0.82:

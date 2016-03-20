@@ -10,8 +10,10 @@ import matplotlib.animation as animation
 
 from scipy.spatial import KDTree
 
-f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
-f_handle_w_pose = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','w')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
+f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses.txt','r')
+# f_handle_w_pose = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','w')
+f_handle_w_pose = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_lm_poses.txt','w')
 
 def getFloatNumberFromReadLines(f_handle, no_params):
 	f_content = f_handle.readlines()
@@ -104,7 +106,8 @@ def getScanPoints(no):
 	return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
 
 def getScanPointsFiltered(no):
-	return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no)+'.txt')
+	# return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no)+'.txt')
+	return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_filtered_'+str(no)+'.txt')
 
 def translateScan2D(points_2d, x, y):
 	return [[xx[0] + x, xx[1] + y] for xx in points_2d]
@@ -116,7 +119,7 @@ def getLocalMap(indexes):
 	local_map = []
 	for iid in indexes[0]:
 		if iid == ref_node_index:
-			local_map = local_map + getScanPointsFiltered(iid)
+			local_map = local_map + getScanPointsFiltered(iid+1)
 		else:
 			untransformed = getScanPointsFiltered(iid)
 			this_iid_pose = points[iid]
@@ -142,7 +145,8 @@ def saveCloud2DToFile(f_h, points_2d):
 for ii in range(0,total_indices):
 	local_map, pose_local_map = getLocalMap(accum_scan_indices[ii])
 	f_handle_w_pose.write(convertIntoCsvString(pose_local_map))
-	f_lm = open('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(ii)+'.txt','w')
+	# f_lm = open('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(ii)+'.txt','w')
+	f_lm = open('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_lm_filtered_'+str(ii)+'.txt','w')
 	saveCloud2DToFile(f_lm, local_map)
 
 
