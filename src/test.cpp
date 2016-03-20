@@ -267,7 +267,7 @@ double x_icp_g = 0;
 double y_icp_g = 0;
 double yaw_icp_g = 0;
 
-//ofstream os("icp_poses.txt");
+ofstream os("icp_poses.txt");
 
 
 void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
@@ -356,7 +356,7 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     pub.publish(pose_tobe_published);
     //cout << icp_result[0] << " " << icp_result[1] << " " << icp_result[2] << endl;
     cout << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << endl;
-    //os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
+    os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
     cout<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
     //g_m1 = g_m2;
     g_m1.clear();

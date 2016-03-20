@@ -145,7 +145,9 @@ public:
 	    //if (!(scan->getScanNumber() % 2)) return;
 	    static bool _first = true;
 	    static VPointCloud::Ptr point_cloud_total(new VPointCloud());
-	    ros::Rate r(32);r.sleep();
+	    //ros::Rate r(32);r.sleep();
+	    ros::Rate r(15);r.sleep();
+	    //ros::Rate r(5);r.sleep();
 	    VPointCloud::Ptr outMsg(new VPointCloud());
 	    outMsg->header.stamp = scan->getStartTimestamp().getTime();//ros::Time::now();
 	    //outMsg->header.stamp = ros::Time::now();
