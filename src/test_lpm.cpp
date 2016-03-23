@@ -47,6 +47,11 @@
 
 #include <tf/transform_datatypes.h>
 
+
+#include <feature/BetaGrid.h>
+#include <feature/CurvatureDetector.h>
+#include <utils/SimpleMinMaxPeakFinder.h>
+
 /** types of point and cloud to work with */
 typedef velodyne_rawdata::VPoint VPoint;
 typedef velodyne_rawdata::VPointCloud VPointCloud;
@@ -376,6 +381,9 @@ VPointCloud::Ptr cloud_for_lpm1;
 void processPointCloudUsingLpm(const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
 {
   static bool _first_time = true;
+  SimplePeakFinder * peakC = new SimplePeakFinder(0.3, 0.004);
+  BetaGridGenerator *m_descriptorGeneratorB = new BetaGridGenerator(0.02, 0.5, 4, 12);
+  CurvatureDetector* m_detectorC = new CurvatureDetector(peakC, 1);
   if (_first_time)
   {
     cloud_for_lpm1 = VPointCloud::Ptr( new VPointCloud());
@@ -510,7 +518,7 @@ int main(int argc, char **argv)
 
   pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>( "mrpt_pose2d", 1);
 
-  ros::ServiceServer service = nh.advertiseService("processICP", processICPService);
+  //ros::ServiceServer service = nh.advertiseService("processICP", processICPService);
 
   //	ICP.options.ICP_algorithm = icpLevenbergMarquardt;
   //	ICP.options.ICP_algorithm = icpClassic;

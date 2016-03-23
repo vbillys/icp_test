@@ -155,6 +155,8 @@ include_directories(
 	/home/avavav/Downloads/IbeoSDK2.11.1/src
 	${libpointmatcher_INCLUDE_DIRS}
 	${PROJECT_SOURCE_DIR}/src/toro
+	/home/avavav/Documents/workspace/flirtlib/trunk/src
+
 )
 
 ## Declare a cpp library
@@ -194,6 +196,8 @@ target_link_libraries(ibeo_ecu_online /home/avavav/Downloads/IbeoSDK2.11.1/libs/
   ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
   ${libpointmatcher_LIBRARIES}
   )
+#target_include_directories(ibeo_ecu_online PRIVATE /home/avavav/Documents/workspace/flirtlib/trunk/src/feature)
+#set_target_properties (ibeo_ecu_online PROPERTIES INCLUDE_DIRECTORIES /home/avavav/Documents/workspace/flirtlib/trunk/src/feature)
 
 add_executable(ibeo_file_read src/ibeo_file_read.cpp)
 target_link_libraries(ibeo_file_read /home/avavav/Downloads/IbeoSDK2.11.1/libs/libibeosdk_d.so-2.11.1
@@ -217,6 +221,9 @@ target_link_libraries(test_lpm_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
   ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
   ${libpointmatcher_LIBRARIES}
   libtoro.a
+  /home/avavav/Documents/workspace/flirtlib/trunk/build/src/feature/libfeature.so
+  /home/avavav/Documents/workspace/flirtlib/trunk/build/src/utils/libutils.so
+  /home/avavav/Documents/workspace/flirtlib/trunk/build/src/geometry/libgeometry.so
   )
 
 add_executable(points_saver_node src/points_saver_node.cpp)
