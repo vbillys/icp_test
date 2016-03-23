@@ -201,6 +201,14 @@ target_link_libraries(test_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
   libtoro.a
   )
 
+
+add_executable(test_lpm_node src/test_lpm.cpp)
+target_link_libraries(test_lpm_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  ${libpointmatcher_LIBRARIES}
+  libtoro.a
+  )
+
 add_executable(points_saver_node src/points_saver_node.cpp)
 target_link_libraries(points_saver_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
   ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
