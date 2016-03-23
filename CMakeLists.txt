@@ -185,6 +185,16 @@ message(STATUS "${catkin_LIBRARIES}")
  ##target_link_libraries(icp_test_node ${roscpp_LIBRARIES} #${catkin_LIBRARIES}
 #)
 
+
+add_executable(ibeo_ecu_online src/ibeo_ecu_online.cpp)
+target_link_libraries(ibeo_ecu_online /home/avavav/Downloads/IbeoSDK2.11.1/libs/libibeosdk_d.so-2.11.1
+  rt
+  ${Boost_SYSTEM_LIBRARY}
+  ${Boost_THREAD_LIBRARY}
+  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  ${libpointmatcher_LIBRARIES}
+  )
+
 add_executable(ibeo_file_read src/ibeo_file_read.cpp)
 target_link_libraries(ibeo_file_read /home/avavav/Downloads/IbeoSDK2.11.1/libs/libibeosdk_d.so-2.11.1
 	rt
