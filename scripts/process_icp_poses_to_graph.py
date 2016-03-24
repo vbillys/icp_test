@@ -17,9 +17,25 @@ import matplotlib.animation as animation
 
 from scipy.spatial import KDTree
 
+
+dir_prefix = '/home/avavav/avdata/alphard/onenorth/onenorth_wb_2016-03-24-10-05-56/'
+
 # f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
-f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-175207/icp_poses.txt','r')
 # f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','r')
+
+# f_handle = open('/home/avavav/avdata/mobile_base/skygarden1/icp_poses.txt','r')
+
+# f_handle = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/onenorth/20150821-120036_sss/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/onenorth/20150821-115715_sss/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/onenorth/20150821-115401_sss/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/icp_poses.txt','r')
+
+
+f_handle = open(dir_prefix + 'icp_poses.txt','r')
+
 f_handle_w = open('icp_poses.graph','w')
 # f_handle_w = open('icp_poses_lm.graph','w')
 
@@ -49,6 +65,8 @@ def grouper(n, iterable, fillvalue=None):
 
 points = getFloatNumberFromReadLines(f_handle, 12)
 points_2d = [[p[0],p[1]] for p in points]
+points = points[0:1650]
+points_2d = points_2d [0:1650]
 tree_points  = KDTree(np.array(points_2d), leafsize=30)
 
 rospy.init_node('point_cloud_pub_from_process_graph_node', anonymous=False)
@@ -71,10 +89,13 @@ def computeICPBetweenScans(no1,no2, init_x = 0 , init_y = 0, init_yaw = 0):
 
 	example = cython_catkin_example.PyCCExample()
 
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no1)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no1)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no1)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no1)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no1)+'.txt')
+
+
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(no1)+'.txt')
 
 	H_points = [[p[0], p[1],1] for p in test_cloud]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
@@ -83,10 +104,13 @@ def computeICPBetweenScans(no1,no2, init_x = 0 , init_y = 0, init_yaw = 0):
 	# print test_cloud
 	# example.load_2d_array('ref_map',np.array(test_cloud, np.float32)) 
 
-	test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
+	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
 	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no2)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no2)+'.txt')
 	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no2)+'.txt')
+
+
+	test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(no2)+'.txt')
 
 	H_points = [[p[0], p[1],1] for p in test_cloud2]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
@@ -154,18 +178,24 @@ def plotScan(no, ax):
 
 def plotScanTransformed(no, ax, tm):
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_'+str(no)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_'+str(no)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no)+'.txt')
+
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/mobile_base/skygarden1/scan_'+str(no)+'.txt')
+
 	point_t = transformCloud(test_cloud, tm)
 	ax.set_offsets(np.column_stack(([x[0] for x in point_t],[x[1] for x in point_t])))
 
 def plotMapTransformed(no, ax, tm, map_xx, map_yy):
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no)+'.txt')
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_filtered_'+str(no)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_filtered_'+str(no)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_direct_'+str(no+1)+'.txt')
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no)+'.txt')
+
+	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/mobile_base/skygarden1/scan_filtered_'+str(no)+'.txt')
+
 	point_t = transformCloud(test_cloud, tm)
 	map_xx = map_xx + [x[0] for x in point_t]
 	map_yy = map_yy + [x[1] for x in point_t]
@@ -184,11 +214,12 @@ def accumulateIcpTransform(icp_result, x, y, yaw):
 # ax = plt.axes()
 # plotScan(0, ax)
 # ax.scatter(points_tracked[0], points_tracked[1] , color='blue', s=8)
-g_thresh = 10.
+g_thresh = 10. #.5 #10.
 class AnimatedScatter(object):
 	def __init__(self):
 		self.fig, self.ax = plt.subplots()
-		self.ax.axis([-200, 100, -100, 200])
+		# self.ax.axis([-200, 100, -100, 200])
+		self.ax.axis([-50, 50, -50, 50])
 		self.ax.set_aspect('equal','datalim')
 		# self.no_frame = 0
 		self.points_map_x = []
@@ -199,7 +230,7 @@ class AnimatedScatter(object):
 		self.last_yaw = 0
 		self.next_capture_dist = 0- g_thresh
 		self._to_clear_2 = None
-		self.ani = animation.FuncAnimation(self.fig, self.update, interval=80, init_func=self.setup_plot, blit=True, frames=len(points)-1, repeat=False)
+		self.ani = animation.FuncAnimation(self.fig, self.update, interval=300, init_func=self.setup_plot, blit=True, frames=len(points)-1, repeat=False)
 		# self.ani = animation.FuncAnimation(self.fig, self.update, interval=80, init_func=self.setup_plot, blit=True, frames=2000, repeat=False)
 		# self.ani = animation.FuncAnimation(self.fig, self.update, interval=80,  blit=True, frames=len(points)-1, repeat=False)
 	def setup_plot(self):
@@ -215,6 +246,7 @@ class AnimatedScatter(object):
 		# print points[i+1]
 		# publishScan(i)
 
+		print points[i]
 		yaw = points[i][2]
 		x = points[i][0]
 		y = points[i][1]
@@ -321,7 +353,7 @@ myscreen.refresh()
 str_edge_added = ''
 index_point = 0
 for vertex in points_2d:
-	dist, ind = tree_points.query(vertex, k=21) #21
+	dist, ind = tree_points.query(vertex, k=41) #21
 	threshold_ind  = []
 	threshold_dist = []
 
@@ -329,6 +361,7 @@ for vertex in points_2d:
 	for idist, iind in zip (dist, ind):
 		# if idist > 2.5 and idist < 10. and abs(index_point - iind) > 10:# > 2.5 and idist < 4.0:
 		if idist < 10. and abs(index_point - iind) > 10:# > 2.5 and idist < 4.0:
+		# if idist > 2.5 and idist < 10:# > 2.5 and idist < 4.0:
 			threshold_ind.append(iind)
 			threshold_dist.append(idist)
 			no_of_added_edge = no_of_added_edge + 1
@@ -337,10 +370,10 @@ for vertex in points_2d:
 
 	# print vertex, index_point, threshold_ind, threshold_dist
 	for idist, iind in zip (threshold_dist, threshold_ind):
-		# init_val = getInitialValues(index_point, iind)
-		# icp_edge = computeICPBetweenScans(index_point, iind, init_val[0], init_val[1], init_val[2])
+		init_val = getInitialValues(index_point, iind)
+		icp_edge = computeICPBetweenScans(index_point, iind+1, init_val[0], init_val[1], init_val[2])
 		# icp_edge = computeICPBetweenScans(index_point, iind)
-		icp_edge = computeICPBetweenScans(index_point, iind+1)
+		# icp_edge = computeICPBetweenScans(index_point, iind+1)
 		myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point+2,'total_points':len(points)})
 		myscreen.refresh()
 		if icp_edge[9] > 0.8: #0.82:

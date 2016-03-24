@@ -98,7 +98,7 @@ class ZipInputStream:
 ## source language.
 ##     -- Donald E. Knuth, December 1974
 
-dir_prefix = '/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/'
+dir_prefix = '/home/avavav/avdata/alphard/onenorth/onenorth_wb_2016-03-24-10-05-56/'
 
 
 # f_handle_pose = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
@@ -119,13 +119,16 @@ dir_prefix = '/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/'
 
 # f_handle2 = open('/home/avavav/avdata/mobile_base/skygarden1/icp_poses.graph','r')
 
-f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses.graph','r')
+# f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses.graph','r')
 # f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-120036_sss/icp_poses.graph','r')
 # f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-115715_sss/icp_poses.graph','r')
 # f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-115401_sss/icp_poses.graph','r')
 # f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/icp_poses.graph','r')
 
-f_handle3 = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses-treeopt-initial.graph','r')
+
+f_handle2 = open(dir_prefix + 'icp_poses.graph','r')
+
+# f_handle3 = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses-treeopt-initial.graph','r')
 
 def getFloatNumberFromReadLines(f_handle, no_params):
 	f_content = f_handle.readlines()
@@ -170,8 +173,10 @@ def getVertexFromGraph(f_handle, no_vertex, processed=False):
 		points.append([noid]+coord)
 	return points
 
+ng = 1651
+
 # ng = 43 # 2433
-ng = 1650#2677 #1650 # 2677 #1650 #2677 #152 #1999 #1015 #1700 #  2433
+# ng = 1650#2677 #1650 # 2677 #1650 #2677 #152 #1999 #1015 #1700 #  2433
 # ng = 1155#2368 #2451 #3000 #3942
 # ng = 900
 
@@ -179,7 +184,7 @@ ng = 1650#2677 #1650 # 2677 #1650 #2677 #152 #1999 #1015 #1700 #  2433
 
 vertices2 =  getVertexFromGraph(f_handle2, ng)
 # vertices =  getVertexFromGraph(f_handle, ng, True)
-vertices3 =  getVertexFromGraph(f_handle3, ng, True)
+# vertices3 =  getVertexFromGraph(f_handle3, ng, True)
 # points = getFloatNumberFromReadLines(f_handle_pose, 12)
 
 fig, ax = plt.subplots()
@@ -193,8 +198,8 @@ ax.set_aspect('equal','datalim')
 point_t = []
 checkpoints = 0
 # plt.plot([o[1] for o in vertices],[o[2] for o in vertices])
-# plt.plot([o[1] for o in vertices2],[o[2] for o in vertices2])
-plt.plot([o[1] for o in vertices3],[o[2] for o in vertices3])
+plt.plot([o[1] for o in vertices2],[o[2] for o in vertices2])
+# plt.plot([o[1] for o in vertices3],[o[2] for o in vertices3])
 # # plt.plot([o[0] for o in points],[o[1] for o in points])
 
 # lm_coords = getFloatNumberFromReadLines(open(dir_prefix+'icp_lm_poses.txt','r'),13)
@@ -204,7 +209,7 @@ travelled_dist = 0
 last_x = 0
 last_y = 0
 next_capture_dist = 0- g_thresh
-for vertex in vertices3:
+for vertex in vertices2:
 # for point in points:
 	if checkpoints % 1 == 0: #25
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(vertex[0])+'.txt')
@@ -215,11 +220,14 @@ for vertex in vertices3:
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/mobile_base/skygarden1/scan_filtered_'+str(vertex[0])+'.txt')
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/mobile_base/skygarden1/scan_'+str(vertex[0])+'.txt')
 
-		test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(vertex[0])+'.txt')
+		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(vertex[0])+'.txt')
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-120036_sss/scan_filtered_'+str(vertex[0])+'.txt')
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115715_sss/scan_filtered_'+str(vertex[0])+'.txt')
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115401_sss/scan_filtered_'+str(vertex[0])+'.txt')
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/scan_filtered_'+str(vertex[0])+'.txt')
+
+
+		test_cloud = read2DPointsFromTextFile(dir_prefix + 'scan_filtered_'+str(vertex[0])+'.txt')
 
 		travelled_dist = travelled_dist + math.hypot(last_x - vertex[1], last_y - vertex[2])
 		last_x = vertex[1]
