@@ -10,10 +10,20 @@ import matplotlib.animation as animation
 
 from scipy.spatial import KDTree
 
+dir_prefix = '/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/'
+
 # f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
-f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses.txt','r')
+# f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-175207/icp_poses.txt','r')
+
+f_handle = open(dir_prefix + 'icp_poses.txt','r')
+
 # f_handle_w_pose = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_lm_poses.txt','w')
-f_handle_w_pose = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_lm_poses.txt','w')
+# f_handle_w_pose = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_lm_poses.txt','w')
+# f_handle_w_pose = open('/home/avavav/avdata/alphard/medialink/20150918-175207/icp_lm_poses.txt','w')
+
+f_handle_w_pose = open(dir_prefix + 'icp_lm_poses.txt','w')
+
 
 def getFloatNumberFromReadLines(f_handle, no_params):
 	f_content = f_handle.readlines()
@@ -33,13 +43,16 @@ def read2DPointsFromTextFile(filename):
 	return points
 
 
+offset = 1650
 points = getFloatNumberFromReadLines(f_handle, 12)
-
+points = points[offset:len(points)]
 
 example = cython_catkin_example.PyCCExample()
 def computeICPBetweenScans(no1,no2):
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no1)+'.txt')
-	test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no1)+'.txt')
+	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no2)+'.txt')
+	test_cloud = read2DPointsFromTextFile(dir_prefix + 'scan_'+str(no1)+'.txt')
+	test_cloud2 = read2DPointsFromTextFile(dir_prefix + 'scan_'+str(no2)+'.txt')
 	cython_icp_result = example.processICP(np.array([x[0] for x in test_cloud], np.float32),np.array([x[1] for x in test_cloud], np.float32),np.array([x[0] for x in test_cloud2], np.float32),np.array([x[1] for x in test_cloud2], np.float32))
 	return cython_icp_result
 
@@ -62,14 +75,18 @@ def createTransformMatrix(x,y,yaw):
 	return np.matrix([[math.cos(yaw),math.sin(yaw),x],[-math.sin(yaw),math.cos(yaw),y],[0,0,1]])
 
 
-g_thresh = 20.
-g_thresh_local = 2.5 
-last_x = 0
-last_y = 0
-last_yaw = 0
+g_thresh = 5 #20.
+g_thresh_local = .5 #2.5 
+# last_x = 0
+# last_y = 0
+# last_yaw = 0
+last_x = points[0][0]
+last_y = points[0][1]
+last_yaw = points[0][2]
 next_capture_dist_local = 0- g_thresh_local
 next_capture_dist=  g_thresh
-index_point = 0
+# index_point = 0
+index_point = offset
 travelled_dist = 0 
 accum_scan_indices = []
 accum_scan_index = []
@@ -103,11 +120,14 @@ for point in points:
 total_indices =  len(accum_scan_indices)
 
 def getScanPoints(no):
-	return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
+	# return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_'+str(no)+'.txt')
+	return read2DPointsFromTextFile(dir_prefix + 'scan_'+str(no)+'.txt')
 
 def getScanPointsFiltered(no):
 	# return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(no)+'.txt')
-	return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_filtered_'+str(no)+'.txt')
+	# return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_filtered_'+str(no)+'.txt')
+	# return read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-175207/scan_filtered_'+str(no)+'.txt')
+	return read2DPointsFromTextFile(dir_prefix + 'scan_filtered_'+str(no)+'.txt')
 
 def translateScan2D(points_2d, x, y):
 	return [[xx[0] + x, xx[1] + y] for xx in points_2d]
@@ -115,14 +135,14 @@ def translateScan2D(points_2d, x, y):
 
 def getLocalMap(indexes):
 	ref_node_index = indexes[1]
-	pose_local_map = list(points[ref_node_index]) + [int(ref_node_index)]
+	pose_local_map = list(points[ref_node_index-offset]) + [int(ref_node_index)]
 	local_map = []
 	for iid in indexes[0]:
 		if iid == ref_node_index:
 			local_map = local_map + getScanPointsFiltered(iid+1)
 		else:
-			untransformed = getScanPointsFiltered(iid)
-			this_iid_pose = points[iid]
+			untransformed = getScanPointsFiltered(iid+1)
+			this_iid_pose = points[iid-offset]
 			untransformed = transformCloud(untransformed, createTransformMatrix(this_iid_pose[0],this_iid_pose[1],-(this_iid_pose[2])))
 			# untransformed = transformCloud(untransformed, createTransformMatrix(this_iid_pose[0],this_iid_pose[1],-(0)))
 			# translated = translateScan2D(untransformed, this_iid_pose[0] - pose_local_map[0],this_iid_pose[1] - pose_local_map[1])
@@ -146,7 +166,9 @@ for ii in range(0,total_indices):
 	local_map, pose_local_map = getLocalMap(accum_scan_indices[ii])
 	f_handle_w_pose.write(convertIntoCsvString(pose_local_map))
 	# f_lm = open('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(ii)+'.txt','w')
-	f_lm = open('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_lm_filtered_'+str(ii)+'.txt','w')
+	# f_lm = open('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_lm_filtered_'+str(ii)+'.txt','w')
+	# f_lm = open('/home/avavav/avdata/alphard/medialink/20150918-175207/scan_lm_filtered_'+str(ii)+'.txt','w')
+	f_lm = open(dir_prefix + 'scan_lm_filtered_'+str(ii)+'.txt','w')
 	saveCloud2DToFile(f_lm, local_map)
 
 
