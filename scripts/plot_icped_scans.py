@@ -18,13 +18,14 @@ import string, StringIO
 
 import sys, getopt
 from optparse import OptionParser
+import os
 
-try:
-	print 'input directory set to ' + sys.argv[1]
-	dir_prefix = sys.argv[1]
-except:
-	print "input directory needed, no input on this, forcing current!"
-	dir_prefix = ''
+# try:
+	# print 'input directory set to ' + sys.argv[1]
+	# dir_prefix = sys.argv[1]
+# except:
+	# print "input directory needed, no input on this, forcing current!"
+	# dir_prefix = ''
 
 # try:
 	# opts, args = getopt.getopt(sys.argv[2:],"s:e:")
@@ -40,10 +41,15 @@ opt_parser = OptionParser()
 # opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit', nargs=4 , type='float', default=[-200, 100, -100, 200])
 opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit', nargs=4 , type='float')
 # opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit_set',  action='store_true', default=False)
+opt_parser.add_option('--sm', dest='save_map',  action='store_true', default=False)
+opt_parser.add_option('--pm', dest='use_processed_map',  action='store_true', default=False)
 opt_parser.add_option('-s','--start', dest='start_index',type='int')
 opt_parser.add_option('-e','--end', dest='end_index', type='int')
-opts, args = opt_parser.parse_args(sys.argv[2:])
+opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
+opt_parser.add_option('-g','--gthresh', dest='g_thresh', type='float', default=10.)
+opts, args = opt_parser.parse_args(sys.argv[1:])
 
+dir_prefix = opts.dir_prefix
 start_index = 0
 end_index = None
 print sys.argv[2:], opts, args
@@ -171,9 +177,11 @@ class ZipInputStream:
 # f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/icp_poses.graph','r')
 
 
-f_handle2 = open(dir_prefix + 'icp_poses.graph','r')
+f_handle2 = open(os.path.join(dir_prefix , 'icp_poses.graph'),'r')
 
-# f_handle3 = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses-treeopt-initial.graph','r')
+if opts.use_processed_map:
+	# f_handle3 = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses-treeopt-initial.graph','r')
+	f_handle3 = open(os.path.join(dir_prefix, 'icp_poses-treeopt-final.graph'),'r')
 
 def getFloatNumberFromReadLines(f_handle, no_params):
 	f_content = f_handle.readlines()
@@ -246,6 +254,8 @@ ng = 1651
 
 
 vertices2 =  getVertexFromGraphAutoCount(f_handle2)
+if opts.use_processed_map:
+	vertices3 =  getVertexFromGraphAutoCount(f_handle3, True)
 
 # vertices2 =  getVertexFromGraph(f_handle2, ng)
 # vertices =  getVertexFromGraph(f_handle, ng, True)
@@ -254,7 +264,9 @@ vertices2 =  getVertexFromGraphAutoCount(f_handle2)
 
 if end_index is None:
 	end_index = len(vertices2)
-vertices2 = vertices2[start_index: end_index+1]
+vertices2 = vertices2[start_index: end_index]
+if opts.use_processed_map:
+	vertices3 = vertices3[start_index: end_index]
 
 fig, ax = plt.subplots()
 # ax.axis([-200, 100, -100, 200])
@@ -270,19 +282,29 @@ point_t = []
 checkpoints = 0
 # plt.plot([o[1] for o in vertices],[o[2] for o in vertices])
 plt.plot([o[1] for o in vertices2],[o[2] for o in vertices2])
-# plt.plot([o[1] for o in vertices3],[o[2] for o in vertices3])
+if opts.use_processed_map:
+	plt.plot([o[1] for o in vertices3],[o[2] for o in vertices3])
 # # plt.plot([o[0] for o in points],[o[1] for o in points])
 
 # lm_coords = getFloatNumberFromReadLines(open(dir_prefix+'icp_lm_poses.txt','r'),13)
 
-g_thresh = 10 #1 #10. #.5 #10 
+g_thresh = opts.g_thresh #1 #10. #.5 #10 
+# g_thresh = 10 #1 #10. #.5 #10 
 travelled_dist = 0 
 # last_x = 0
 # last_y = 0
-last_x = vertices2[0][0]
-last_y = vertices2[0][1]
+# last_x = vertices2[0][0]
+# last_y = vertices2[0][1]
 next_capture_dist = 0- g_thresh
-for vertex in vertices2:
+if opts.use_processed_map:
+	vertices_chosen = vertices3
+	last_x = vertices3[0][0]
+	last_y = vertices3[0][1]
+else:
+	vertices_chosen = vertices2
+	last_x = vertices2[0][0]
+	last_y = vertices2[0][1]
+for vertex in vertices_chosen:
 # for point in points:
 	if checkpoints % 1 == 0: #25
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(vertex[0])+'.txt')
@@ -300,7 +322,7 @@ for vertex in vertices2:
 		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/scan_filtered_'+str(vertex[0])+'.txt')
 
 
-		test_cloud = read2DPointsFromTextFile(dir_prefix + 'scan_filtered_'+str(vertex[0])+'.txt')
+		test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix , 'scan_filtered_'+str(vertex[0])+'.txt'))
 
 		travelled_dist = travelled_dist + math.hypot(last_x - vertex[1], last_y - vertex[2])
 		last_x = vertex[1]
@@ -322,6 +344,9 @@ def saveCloud2DToFile(f_h, points_2d):
 def saveCloud2DToFileCompressed(f_h, points_2d):
 	f_h.write(zlib.compress("".join([" ".join(format(x, ".6f") for x in p) + "\n" for p in points_2d]), 5))
 
+if not opts.save_map:
+	exit()
+
 # f_handle_save_map = open('/home/avavav/avdata/alphard/medialink/20150918-180619/map.txt', 'w')
 # f_handle_save_map = open('/home/avavav/avdata/alphard/medialink/20150918-174721/map.txt', 'w')
 # f_handle_save_map = open('/home/avavav/avdata/alphard/medialink/20150918-175207/map.txt', 'w')
@@ -329,7 +354,7 @@ def saveCloud2DToFileCompressed(f_h, points_2d):
 
 # f_handle_save_map = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/map.txt', 'w')
 
-f_handle_save_map = open('map.txt', 'w')
+f_handle_save_map = open(os.path.join(dir_prefix, 'map.txt'), 'w')
 
 # saveCloud2DToFile(f_handle_save_map, point_t)
 saveCloud2DToFileCompressed(f_handle_save_map, point_t)
@@ -341,7 +366,7 @@ start = time.time()
 # f_handle_open_map = open('/home/avavav/avdata/alphard/medialink/20150918-175207/map.txt', 'rb')
 # f_handle_open_map = open('/home/avavav/avdata/mobile_base/skygarden1/map.txt', 'rb')
 
-f_handle_open_map = open('map.txt', 'rb')
+f_handle_open_map = open(os.path.join(dir_prefix, 'map.txt'), 'rb')
 
 data = f_handle_open_map.read()
 file = ZipInputStream(StringIO.StringIO(data))

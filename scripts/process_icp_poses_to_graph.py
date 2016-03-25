@@ -18,7 +18,28 @@ import matplotlib.animation as animation
 from scipy.spatial import KDTree
 
 
-dir_prefix = '/home/avavav/avdata/alphard/onenorth/onenorth_wb_2016-03-24-10-05-56/'
+from optparse import OptionParser
+import os, sys
+
+
+opt_parser = OptionParser()
+opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
+opt_parser.add_option('--lc', dest='loop_closure',  action='store_true', default=False)
+opt_parser.add_option('--nf', dest='icp_use_filtered_data',  action='store_false', default=True)
+
+opt_parser.add_option('-s','--start', dest='start_index',type='int')
+opt_parser.add_option('-e','--end', dest='end_index', type='int')
+opts, args = opt_parser.parse_args(sys.argv[1:])
+start_index = 0
+end_index = None
+if opts.start_index is not None:
+	start_index = int(opts.start_index)
+if opts.end_index is not None:
+	start_index = int(opts.end_index)
+dir_prefix = opts.dir_prefix
+print  opts, args
+
+# dir_prefix = '/home/avavav/avdata/alphard/onenorth/onenorth_wb_2016-03-24-10-05-56/'
 
 # f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
 # f_handle = open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_poses.txt','r')
@@ -34,9 +55,9 @@ dir_prefix = '/home/avavav/avdata/alphard/onenorth/onenorth_wb_2016-03-24-10-05-
 # f_handle = open('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/icp_poses.txt','r')
 
 
-f_handle = open(dir_prefix + 'icp_poses.txt','r')
+f_handle = open(os.path.join(dir_prefix , 'icp_poses.txt'),'r')
 
-f_handle_w = open('icp_poses.graph','w')
+f_handle_w = open(os.path.join(dir_prefix ,'icp_poses.graph'),'w')
 # f_handle_w = open('icp_poses_lm.graph','w')
 
 
@@ -65,8 +86,10 @@ def grouper(n, iterable, fillvalue=None):
 
 points = getFloatNumberFromReadLines(f_handle, 12)
 points_2d = [[p[0],p[1]] for p in points]
-points = points[0:1650]
-points_2d = points_2d [0:1650]
+if end_index is None:
+	end_index = len(points)
+points = points[start_index:end_index]
+points_2d = points_2d [start_index:end_index]
 tree_points  = KDTree(np.array(points_2d), leafsize=30)
 
 rospy.init_node('point_cloud_pub_from_process_graph_node', anonymous=False)
@@ -95,7 +118,12 @@ def computeICPBetweenScans(no1,no2, init_x = 0 , init_y = 0, init_yaw = 0):
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no1)+'.txt')
 
 
-	test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(no1)+'.txt')
+	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(no1)+'.txt')
+
+	if opts.icp_use_filtered_data:
+		test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_filtered_'+str(no1)+'.txt'))
+	else:
+		test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_'+str(no1)+'.txt'))
 
 	H_points = [[p[0], p[1],1] for p in test_cloud]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
@@ -110,7 +138,12 @@ def computeICPBetweenScans(no1,no2, init_x = 0 , init_y = 0, init_yaw = 0):
 	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(no2)+'.txt')
 
 
-	test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(no2)+'.txt')
+	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(no2)+'.txt')
+
+	if opts.icp_use_filtered_data:
+		test_cloud2 = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_filtered_'+str(no2)+'.txt'))
+	else:
+		test_cloud2 = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_'+str(no2)+'.txt'))
 
 	H_points = [[p[0], p[1],1] for p in test_cloud2]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
@@ -332,7 +365,8 @@ f_handle_w.write(str_vertex)
 f_handle_w.write(str_edge)
 # f_handle_w.write(str_edge_recomputed)
 
-exit()
+if not opts.loop_closure:
+	exit()
 
 # find 10 closest vertices for every vertex
 # also test if the icp result is bad, if good only add the EDGE constraint
@@ -371,7 +405,7 @@ for vertex in points_2d:
 	# print vertex, index_point, threshold_ind, threshold_dist
 	for idist, iind in zip (threshold_dist, threshold_ind):
 		init_val = getInitialValues(index_point, iind)
-		icp_edge = computeICPBetweenScans(index_point, iind+1, init_val[0], init_val[1], init_val[2])
+		icp_edge = computeICPBetweenScans(index_point+1, iind+1, init_val[0], init_val[1], init_val[2])
 		# icp_edge = computeICPBetweenScans(index_point, iind)
 		# icp_edge = computeICPBetweenScans(index_point, iind+1)
 		myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point+2,'total_points':len(points)})

@@ -19,6 +19,21 @@ import string, StringIO
 from cython_catkin_example import cython_catkin_example
 
 
+from optparse import OptionParser
+import os, sys
+
+
+opt_parser = OptionParser()
+opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
+opt_parser.add_option('-m','--mapdirectory', dest='dir_prefix_map', type='string', default='')
+opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit', nargs=4 , type='float')
+opt_parser.add_option('-i','--initial_pose', dest='initial_pose', nargs=3 , type='float')
+opt_parser.add_option('--nm', dest='no_matching',  action='store_true', default=False)
+opts, args = opt_parser.parse_args(sys.argv[1:])
+dir_prefix = opts.dir_prefix
+dir_prefix_map = opts.dir_prefix_map
+print  opts, args
+
 class ZipInputStream:
 
 	def __init__(self, file):
@@ -154,12 +169,12 @@ def getVertexFromGraph(f_handle, no_vertex, processed=False):
 		points.append([noid]+coord)
 	return points
 
-dir_prefix = '/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/'
+# dir_prefix = '/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/'
 
 # f_handle_processed_graph = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses-treeopt-final.graph','r')
 # f_handle_open_map = open('/home/avavav/avdata/alphard/medialink/20150918-180619/map.txt', 'rb')
 
-f_handle_open_map = open(dir_prefix + 'map.txt', 'rb')
+f_handle_open_map = open(os.path.join(dir_prefix_map , 'map.txt'), 'rb')
 
 data_map = f_handle_open_map.read()
 file_openmap = ZipInputStream(StringIO.StringIO(data_map))
@@ -167,7 +182,9 @@ lines_map = file_openmap.readlines()
 point_t = read2DPointsFromStringReadLines(lines_map)
 
 fig, ax = plt.subplots()
-ax.axis([-200, 100, -100, 200])
+if opts.plot_axes_limit is not None:
+	ax.axis(opts.plot_axes_limit)
+# ax.axis([-200, 100, -100, 200])
 ax.set_aspect('equal','datalim')
 ax.scatter ([x[0] for x in point_t],[x[1] for x in point_t], color='green', s=.3)
 
@@ -179,7 +196,7 @@ ax.scatter ([x[0] for x in point_t],[x[1] for x in point_t], color='green', s=.3
 # test_poses = getFloatNumberFromReadLines(open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_lm_poses.txt','r'), 13)
 # test_poses = getFloatNumberFromReadLines(open('/home/avavav/avdata/alphard/medialink/20150918-175207/icp_lm_poses.txt','r'), 13)
 
-test_poses = getFloatNumberFromReadLines(open(dir_prefix + 'icp_lm_poses.txt','r'), 13)
+test_poses = getFloatNumberFromReadLines(open(os.path.join(dir_prefix , 'icp_lm_poses.txt'),'r'), 13)
 # n = 1 
 vertices_plot = []
 odom_plot = []
@@ -188,12 +205,34 @@ icp_plot = []
 # initial_error = [5,5,math.radians(10)]
 # initial_error = [-30,0,0] #-15
 initial_error = [0,0,0] #-15
+if opts.initial_pose is not None:
+	init_pose_x = opts.initial_pose[0]
+	init_pose_y = opts.initial_pose[1]
+	init_pose_yaw = math.degrees(opts.initial_pose[2])
+	pose0 = test_poses[0]
+else:
+	init_pose_x = 0
+	init_pose_y = 0
+	init_pose_yaw = 0
+
+def projectToInitPose(pose,pose0, cloud, init_x, init_y, init_yaw):
+	#rotate first
+	_x = pose[0]-pose0[0]
+	_y = pose[1]-pose0[1]
+	_yaw = pose[2] - pose0[2]
+	_cloud = transformCloud(cloud, createTransfromFromXYYaw(-_x, -_y, _yaw))
+	# _cloud = transformCloud(_cloud, createTransfromFromXYYaw(0, 0, -init_yaw))
+	# _x = -pose[0]+init_x
+	# _y = -pose[1]+init_y
+	# return transformCloud(_cloud, createTransfromFromXYYaw(_x, _y, 0))
+	return _cloud
+
 for n in range (0, len(test_poses)):
 	# test_local_map = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_' + str(n) + '.txt')
 	# test_local_map = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_lm_filtered_' + str(n) + '.txt')
 	# test_local_map = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-175207/scan_lm_filtered_' + str(n) + '.txt')
 
-	test_local_map = read2DPointsFromTextFile(dir_prefix + 'scan_lm_filtered_' + str(n) + '.txt')
+	test_local_map = read2DPointsFromTextFile(os.path.join(dir_prefix , 'scan_lm_filtered_' + str(n) + '.txt'))
 
 	# print test_poses[n]
 	random_x = 0#np.random.normal(0,.5)
@@ -205,7 +244,11 @@ for n in range (0, len(test_poses)):
 	# print icp_pose
 	# print graphVertices[int(test_poses[n][-1])]
 
-	only_odom_accum_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
+	if opts.initial_pose is not None:
+		only_odom_accum_plot.append([test_poses[n][0]-pose0[0]+random_x+init_pose_x,test_poses[n][1]-pose0[1]+random_y+init_pose_y])
+		test_local_map_inited = projectToInitPose(test_poses[n], pose0,test_local_map, init_pose_x, init_pose_y, init_pose_yaw)
+	else:
+		only_odom_accum_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
 
 	if n == 0:
 		# random_x = np.random.normal(0,10.5)
@@ -214,19 +257,36 @@ for n in range (0, len(test_poses)):
 		random_x = initial_error[0]
 		random_y = initial_error[1]
 		random_yaw = initial_error[2]
-		odom_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
+		if opts.initial_pose is not None:
+			odom_plot.append([random_x+init_pose_x,random_y+init_pose_y])
+		else:
+			odom_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
 		# odom_plot.append([test_poses[n][0],test_poses[n][1]])
-		icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
+		# if not opts.no_matching:
+		if opts.initial_pose is not None:
+			icp_pose = computeICPBetweenScans(point_t, test_local_map_inited, init_pose_x, init_pose_y, init_pose_yaw)
+		else:
+			icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
 	else:
 		_x = test_poses[n][0] - test_poses[n-1][0] + icp_pose[0]+random_x
 		_y = test_poses[n][1] - test_poses[n-1][1] + icp_pose[1]+random_y
 		_yaw = test_poses[n][2] - test_poses[n-1][2] + icp_pose[2]+random_yaw
 		odom_plot.append([_x,_y])
-		icp_pose = computeICPBetweenScans(point_t, test_local_map, _x, _y, _yaw)
+		if opts.initial_pose is not None:
+			icp_pose = computeICPBetweenScans(point_t, test_local_map_inited, _x, _y, _yaw)
+		else:
+			icp_pose = computeICPBetweenScans(point_t, test_local_map, _x, _y, _yaw)
 		# icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
 
-	t_point_t = transformCloud(test_local_map, createTransfromFromXYYaw(icp_pose[0],icp_pose[1],-icp_pose[2]))
-	# t_point_t = transformCloud(test_local_map, createTransfromFromXYYaw(test_poses[n][0],test_poses[n][1],-test_poses[n][2]))
+	if opts.no_matching:
+		if opts.initial_pose is None:
+			t_point_t = transformCloud(test_local_map, createTransfromFromXYYaw(test_poses[n][0],test_poses[n][1],-test_poses[n][2]))
+		else:
+			# t_point_t = test_local_map_inited
+			t_point_t = transformCloud(test_local_map_inited, createTransfromFromXYYaw(test_poses[n][0]-pose0[0]+init_pose_x,test_poses[n][1]-pose0[1]+init_pose_y,-test_poses[n][2]+ pose0[2] + init_pose_yaw))
+	else:
+		t_point_t = transformCloud(test_local_map_inited, createTransfromFromXYYaw(icp_pose[0],icp_pose[1],-icp_pose[2]))
+
 	ax.scatter ([x[0] for x in t_point_t],[x[1] for x in t_point_t], color='magenta', s=.25)
 	# vertices_plot.append([graphVertices[int(test_poses[n][-1])][1],graphVertices[int(test_poses[n][-1])][2]])
 	icp_plot.append([icp_pose[0],icp_pose[1]])
