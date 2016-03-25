@@ -16,6 +16,51 @@ import zlib
 
 import string, StringIO
 
+import sys, getopt
+from optparse import OptionParser
+
+try:
+	print 'input directory set to ' + sys.argv[1]
+	dir_prefix = sys.argv[1]
+except:
+	print "input directory needed, no input on this, forcing current!"
+	dir_prefix = ''
+
+# try:
+	# opts, args = getopt.getopt(sys.argv[2:],"s:e:")
+# except:
+	# pass
+	
+	# print "for some reason cannot get options, fallback to default values"
+
+
+
+
+opt_parser = OptionParser()
+# opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit', nargs=4 , type='float', default=[-200, 100, -100, 200])
+opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit', nargs=4 , type='float')
+# opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit_set',  action='store_true', default=False)
+opt_parser.add_option('-s','--start', dest='start_index',type='int')
+opt_parser.add_option('-e','--end', dest='end_index', type='int')
+opts, args = opt_parser.parse_args(sys.argv[2:])
+
+start_index = 0
+end_index = None
+print sys.argv[2:], opts, args
+
+# for opt, arg in opts:
+	# if opt == '-s':
+		# start_index = int(arg)
+	# elif opt == '-e':
+		# end_index = int(arg)
+if opts.start_index is not None:
+	start_index = int(opts.start_index)
+if opts.end_index is not None:
+	start_index = int(opts.end_index)
+
+print start_index, end_index
+# exit()
+
 class ZipInputStream:
 
 	def __init__(self, file):
@@ -98,7 +143,7 @@ class ZipInputStream:
 ## source language.
 ##     -- Donald E. Knuth, December 1974
 
-dir_prefix = '/home/avavav/avdata/alphard/onenorth/onenorth_wb_2016-03-24-10-05-56/'
+# dir_prefix = '/home/avavav/avdata/alphard/onenorth/onenorth_wb_2016-03-24-10-05-56/'
 
 
 # f_handle_pose = open('/home/avavav/avdata/alphard/medialink/20150918-180619/icp_poses.txt','r')
@@ -173,6 +218,23 @@ def getVertexFromGraph(f_handle, no_vertex, processed=False):
 		points.append([noid]+coord)
 	return points
 
+def getVertexFromGraphAutoCount(f_handle,  processed=False):
+	f_content = f_handle.readlines()
+	points = []
+	# for str_ in f_content:
+	for i in range(0,len(f_content)):
+		strs = f_content[i].strip()
+		strs_splitted =  strs.split()
+		# print strs_splitted
+		if strs_splitted[0] == "VERTEX" or strs_splitted[0] == "VERTEX2":
+			noid = int(strs_splitted[1])
+			if processed:
+				coord = [-float(strs_splitted[2]), float(strs_splitted[3]), -float(strs_splitted[4])]
+			else:
+				coord = [float(strs_splitted[2]), float(strs_splitted[3]), float(strs_splitted[4])]
+			points.append([noid]+coord)
+	return points
+
 ng = 1651
 
 # ng = 43 # 2433
@@ -182,13 +244,22 @@ ng = 1651
 
 # ng = 2677
 
-vertices2 =  getVertexFromGraph(f_handle2, ng)
+
+vertices2 =  getVertexFromGraphAutoCount(f_handle2)
+
+# vertices2 =  getVertexFromGraph(f_handle2, ng)
 # vertices =  getVertexFromGraph(f_handle, ng, True)
 # vertices3 =  getVertexFromGraph(f_handle3, ng, True)
 # points = getFloatNumberFromReadLines(f_handle_pose, 12)
 
+if end_index is None:
+	end_index = len(vertices2)
+vertices2 = vertices2[start_index: end_index+1]
+
 fig, ax = plt.subplots()
-ax.axis([-200, 100, -100, 200])
+# ax.axis([-200, 100, -100, 200])
+if opts.plot_axes_limit is not None:
+	ax.axis(opts.plot_axes_limit)
 # ax.axis([-80, 250, -350, 25])
 ax.set_aspect('equal','datalim')
 # ax.hold(True)
@@ -206,8 +277,10 @@ plt.plot([o[1] for o in vertices2],[o[2] for o in vertices2])
 
 g_thresh = 10 #1 #10. #.5 #10 
 travelled_dist = 0 
-last_x = 0
-last_y = 0
+# last_x = 0
+# last_y = 0
+last_x = vertices2[0][0]
+last_y = vertices2[0][1]
 next_capture_dist = 0- g_thresh
 for vertex in vertices2:
 # for point in points:
