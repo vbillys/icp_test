@@ -208,24 +208,49 @@ initial_error = [0,0,0] #-15
 if opts.initial_pose is not None:
 	init_pose_x = opts.initial_pose[0]
 	init_pose_y = opts.initial_pose[1]
-	init_pose_yaw = math.degrees(opts.initial_pose[2])
-	pose0 = test_poses[0]
+	init_pose_yaw = math.radians(opts.initial_pose[2])
 else:
 	init_pose_x = 0
 	init_pose_y = 0
 	init_pose_yaw = 0
 
+def translateScan2D(points_2d, x, y):
+	return [[xx[0] + x, xx[1] + y] for xx in points_2d]
+
 def projectToInitPose(pose,pose0, cloud, init_x, init_y, init_yaw):
 	#rotate first
-	_x = pose[0]-pose0[0]
-	_y = pose[1]-pose0[1]
-	_yaw = pose[2] - pose0[2]
-	_cloud = transformCloud(cloud, createTransfromFromXYYaw(-_x, -_y, _yaw))
-	# _cloud = transformCloud(_cloud, createTransfromFromXYYaw(0, 0, -init_yaw))
+	# _x = pose[0]-pose0[0]
+	# _y = pose[1]-pose0[1]
+	# _yaw = pose[2] - pose0[2]
+	_cloud = transformCloud(cloud, createTransfromFromXYYaw(pose[0], pose[1], -pose[2]))
+	# _cloud = translateScan2D(_cloud, -pose0[0]+init_x, -pose0[1]+init_y)
+	_cloud = translateScan2D(_cloud, -pose0[0], -pose0[1])
+	# _cloud = transformCloud(_cloud, createTransfromFromXYYaw(0, 0, _yaw))
+	_cloud = transformCloud(_cloud, createTransfromFromXYYaw(0, 0, -init_yaw))
+	_cloud = translateScan2D(_cloud, init_x, init_y)
 	# _x = -pose[0]+init_x
 	# _y = -pose[1]+init_y
 	# return transformCloud(_cloud, createTransfromFromXYYaw(_x, _y, 0))
 	return _cloud
+
+# print test_poses
+if opts.initial_pose is not None:
+	test_poses_inited = [ list(jj) for jj in test_poses]
+	idx = 0
+	for p in test_poses_inited:
+		_x = p[0]-test_poses[0][0]
+		_y = p[1]-test_poses[0][1]
+		_yaw = p[2] #- test_poses[0][2]
+		_xx = math.cos(init_pose_yaw)*_x - math.sin(init_pose_yaw)*_y
+		_yy = math.sin(init_pose_yaw)*_x + math.cos(init_pose_yaw)*_y
+		# test_poses[idx] = list(test_poses[idx])
+		test_poses_inited[idx][0] = _xx + init_pose_x
+		test_poses_inited[idx][1] = _yy + init_pose_y
+		test_poses_inited[idx][2] = _yaw + init_pose_yaw
+		idx = idx + 1
+	pose0 = test_poses[0]
+
+
 
 for n in range (0, len(test_poses)):
 	# test_local_map = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_' + str(n) + '.txt')
@@ -245,8 +270,8 @@ for n in range (0, len(test_poses)):
 	# print graphVertices[int(test_poses[n][-1])]
 
 	if opts.initial_pose is not None:
-		only_odom_accum_plot.append([test_poses[n][0]-pose0[0]+random_x+init_pose_x,test_poses[n][1]-pose0[1]+random_y+init_pose_y])
-		test_local_map_inited = projectToInitPose(test_poses[n], pose0,test_local_map, init_pose_x, init_pose_y, init_pose_yaw)
+		# only_odom_accum_plot.append([test_poses[n][0]-pose0[0]+random_x+init_pose_x,test_poses[n][1]-pose0[1]+random_y+init_pose_y])
+		only_odom_accum_plot.append([test_poses_inited[n][0]+random_x,test_poses_inited[n][1]+random_y])
 	else:
 		only_odom_accum_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
 
@@ -257,39 +282,49 @@ for n in range (0, len(test_poses)):
 		random_x = initial_error[0]
 		random_y = initial_error[1]
 		random_yaw = initial_error[2]
-		if opts.initial_pose is not None:
-			odom_plot.append([random_x+init_pose_x,random_y+init_pose_y])
-		else:
-			odom_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
-		# odom_plot.append([test_poses[n][0],test_poses[n][1]])
-		# if not opts.no_matching:
-		if opts.initial_pose is not None:
-			icp_pose = computeICPBetweenScans(point_t, test_local_map_inited, init_pose_x, init_pose_y, init_pose_yaw)
-		else:
-			icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
+		if not opts.no_matching:
+			if opts.initial_pose is not None:
+				odom_plot.append([random_x+init_pose_x,random_y+init_pose_y])
+			else:
+				odom_plot.append([test_poses[n][0]+random_x,test_poses[n][1]+random_y])
+			# odom_plot.append([test_poses[n][0],test_poses[n][1]])
+			if opts.initial_pose is not None:
+				# icp_pose = computeICPBetweenScans(point_t, test_local_map, init_pose_x, init_pose_y, init_pose_yaw)
+				icp_pose = computeICPBetweenScans(point_t, test_local_map, init_pose_x, init_pose_y, init_pose_yaw+test_poses[0][2])
+			else:
+				icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
 	else:
-		_x = test_poses[n][0] - test_poses[n-1][0] + icp_pose[0]+random_x
-		_y = test_poses[n][1] - test_poses[n-1][1] + icp_pose[1]+random_y
-		_yaw = test_poses[n][2] - test_poses[n-1][2] + icp_pose[2]+random_yaw
-		odom_plot.append([_x,_y])
-		if opts.initial_pose is not None:
-			icp_pose = computeICPBetweenScans(point_t, test_local_map_inited, _x, _y, _yaw)
-		else:
-			icp_pose = computeICPBetweenScans(point_t, test_local_map, _x, _y, _yaw)
-		# icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
+		if not opts.no_matching:
+			if opts.initial_pose is not None:
+				_x = test_poses_inited[n][0] - test_poses_inited[n-1][0] + icp_pose[0]+random_x
+				_y = test_poses_inited[n][1] - test_poses_inited[n-1][1] + icp_pose[1]+random_y
+				_yaw = test_poses_inited[n][2] - test_poses_inited[n-1][2] + icp_pose[2]+random_yaw
+				odom_plot.append([_x,_y])
+				icp_pose = computeICPBetweenScans(point_t, test_local_map, _x, _y, _yaw)
+			else:
+				_x = test_poses[n][0] - test_poses[n-1][0] + icp_pose[0]+random_x
+				_y = test_poses[n][1] - test_poses[n-1][1] + icp_pose[1]+random_y
+				_yaw = test_poses[n][2] - test_poses[n-1][2] + icp_pose[2]+random_yaw
+				odom_plot.append([_x,_y])
+				icp_pose = computeICPBetweenScans(point_t, test_local_map, _x, _y, _yaw)
+			# icp_pose = computeICPBetweenScans(point_t, test_local_map, test_poses[n][0]+random_x, test_poses[n][1]+random_y, test_poses[n][2]+random_yaw)
 
 	if opts.no_matching:
 		if opts.initial_pose is None:
 			t_point_t = transformCloud(test_local_map, createTransfromFromXYYaw(test_poses[n][0],test_poses[n][1],-test_poses[n][2]))
 		else:
 			# t_point_t = test_local_map_inited
-			t_point_t = transformCloud(test_local_map_inited, createTransfromFromXYYaw(test_poses[n][0]-pose0[0]+init_pose_x,test_poses[n][1]-pose0[1]+init_pose_y,-test_poses[n][2]+ pose0[2] + init_pose_yaw))
+			test_local_map_inited = projectToInitPose(test_poses[n], pose0,test_local_map, init_pose_x, init_pose_y, init_pose_yaw)
+			# t_point_t = transformCloud(test_local_map, createTransfromFromXYYaw(test_poses[n][0]-pose0[0]+init_pose_x,test_poses[n][1]-pose0[1]+init_pose_y,-test_poses[n][2]+ pose0[2] + init_pose_yaw))
+			t_point_t = test_local_map_inited
 	else:
-		t_point_t = transformCloud(test_local_map_inited, createTransfromFromXYYaw(icp_pose[0],icp_pose[1],-icp_pose[2]))
+		t_point_t = transformCloud(test_local_map, createTransfromFromXYYaw(icp_pose[0],icp_pose[1],-icp_pose[2]))
 
 	ax.scatter ([x[0] for x in t_point_t],[x[1] for x in t_point_t], color='magenta', s=.25)
+
 	# vertices_plot.append([graphVertices[int(test_poses[n][-1])][1],graphVertices[int(test_poses[n][-1])][2]])
-	icp_plot.append([icp_pose[0],icp_pose[1]])
+	if not opts.no_matching:
+		icp_plot.append([icp_pose[0],icp_pose[1]])
 
 # test_local_map_aligned = transformCloud(test_local_map, createTransfromFromXYYaw(icp_pose[0], icp_pose[1], -icp_pose[2]))
 # ax.scatter ([x[0] for x in test_local_map_aligned ],[x[1] for x in test_local_map_aligned ], color='blue', s=1.3)
@@ -301,7 +336,7 @@ plt.plot([x[0] for x in icp_plot], [x[1] for x in icp_plot], color='cyan', lines
 
 print only_odom_accum_plot
 print odom_plot
-print icp_pose
+# print icp_pose
 
 plt.show(True)
 
