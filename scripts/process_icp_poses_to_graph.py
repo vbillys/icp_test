@@ -348,9 +348,14 @@ for edge in points:
 	str_edge = str_edge + 'EDGE2 '
 	str_edge = str_edge + format(index_point+1,'d') + ' '
 	str_edge = str_edge + format(index_point  ,'d') + ' '
-	str_edge = str_edge + format(edge[3],'.4f') + ' '
-	str_edge = str_edge + format(edge[4],'.4f') + ' '
-	str_edge = str_edge + format(edge[5],'.4f') + ' '
+	if index_point == 0 and start_index > 0:
+		str_edge = str_edge + format(edge[0],'.4f') + ' '
+		str_edge = str_edge + format(edge[1],'.4f') + ' '
+		str_edge = str_edge + format(edge[2],'.4f') + ' '
+	else:
+		str_edge = str_edge + format(edge[3],'.4f') + ' '
+		str_edge = str_edge + format(edge[4],'.4f') + ' '
+		str_edge = str_edge + format(edge[5],'.4f') + ' '
 	str_edge = str_edge + format(edge[6],'.4f') + ' '
 	str_edge = str_edge + format(edge[7],'.4f') + ' '
 	str_edge = str_edge + format(edge[8],'.4f') + ' '
@@ -394,7 +399,7 @@ for vertex in points_2d:
 	no_of_added_edge = 0
 	for idist, iind in zip (dist, ind):
 		# if idist > 2.5 and idist < 10. and abs(index_point - iind) > 10:# > 2.5 and idist < 4.0:
-		if idist < 10. and abs(index_point - iind) > 10:# > 2.5 and idist < 4.0:
+		if idist < 30. and abs(index_point - iind) > 10:# > 2.5 and idist < 4.0:
 		# if idist > 2.5 and idist < 10:# > 2.5 and idist < 4.0:
 			threshold_ind.append(iind)
 			threshold_dist.append(idist)
@@ -410,7 +415,7 @@ for vertex in points_2d:
 		# icp_edge = computeICPBetweenScans(index_point, iind+1)
 		myscreen.addstr(12,25,'Recomputing ICP, %(index_point)d/%(total_points)d' % {'index_point':index_point+2,'total_points':len(points)})
 		myscreen.refresh()
-		if icp_edge[9] > 0.8: #0.82:
+		if icp_edge[9] > .7: #0.8: #0.82:
 			str_edge_added = str_edge_added + 'EDGE2 '
 			str_edge_added = str_edge_added + format(iind+1,'d') + ' '
 			str_edge_added = str_edge_added + format(index_point+1,'d') + ' '
