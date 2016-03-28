@@ -5,6 +5,7 @@ from ZipLib import ZipInputStream
 import string, StringIO
 import pylab as plt
 import matplotlib.animation as animation
+from cython_catkin_example import cython_catkin_example
 
 def getFloatNumberFromReadLines(f_handle, no_params):
 	f_content = f_handle.readlines()
@@ -17,6 +18,16 @@ def getFloatNumberFromReadLines(f_handle, no_params):
 	# print points
 	return points
 
+def getFloatNumberListFromReadLines(f_handle):
+	f_content = f_handle.readlines()
+	points = []
+	for str_ in f_content:
+		strs = str_.strip()
+		point_ = map(float, strs.split())
+		# point = zip(*(iter(point_),) * no_params)
+		points.append(point_)
+	# print points
+	return points
 
 def getFloatNumberFromStringReadLines(strs, no_params):
 	points = []
@@ -108,6 +119,10 @@ def accumulateIcpTransform(icp_result, x, y, yaw):
 	yaw_icp_g = yaw + icp_result[2]
 	return x_icp_g, y_icp_g, yaw_icp_g
 
+
+
+
+
 class AnimatedScatter(object):
 	def setup_anim(self, interval=80):
 		self.fig, self.ax = plt.subplots()
@@ -191,9 +206,11 @@ class ICPScan(object):
 		if not use_accumulated:
 			self.f_handle_poses = open(os.path.join(dir_prefix , 'icp_poses.txt'),'r')
 			self.poses = getFloatNumberFromReadLines(self.f_handle_poses, 12)
+			self.poses = [list(pose) for pose in self.poses]
 		else:
 			self.f_handle_poses = open(os.path.join(dir_prefix , 'icp_lm_poses.txt'),'r')
-			self.poses = getFloatNumberFromReadLines(self.f_handle_poses, 13)
+			self.poses = getFloatNumberListFromReadLines(self.f_handle_poses) #, 13)
+			# self.poses = [list(pose) for pose in self.poses]
 		self.dir_prefix = dir_prefix
 		self.use_accumulated = use_accumulated
 		if load_map:
@@ -207,9 +224,23 @@ class ICPScan(object):
 			self.points_map_x = []
 			self.points_map_y = []
 			self.animate_obj = AnimatedScatter(self, axis_limit=axis_limit)
+		self.corrected_edges = {}
 
 	def setAnimReady(self):
 		self.animate_obj.setup_anim()
+
+	def getCloudFromIndex(self, no, filtered=False,separate_axes=False):
+		if self.use_accumulated:
+			_tcloud = read2DPointsFromTextFile(os.path.join(self.dir_prefix , 'scan_lm_filtered_'+str(no)+'.txt'))
+		else:
+			if filtered:
+				_tcloud = read2DPointsFromTextFile(os.path.join(self.dir_prefix , 'scan_filtered_'+str(no+1)+'.txt'))
+			else:
+				_tcloud = read2DPointsFromTextFile(os.path.join(self.dir_prefix , 'scan_'+str(no+1)+'.txt'))
+		if separate_axes:
+			return [c[0] for c in _tcloud], [c[1] for c in _tcloud]
+		else:
+			return _tcloud
 
 	def getCloudTransformedFromIndex(self, no, x=None, y=None, yaw=None, filtered=False, additive_pose=False, separate_axes=False):
 		if x is None:
@@ -252,3 +283,64 @@ class ICPScan(object):
 
 	def getPose(self,no):
 		return self.poses[no]
+
+	def modPose(self,no, new_pose, additive_pose=False):
+		if additive_pose:
+			for i in range(3):
+				self.poses[no][i] = self.poses[no][i] + new_pose[i]
+		else:
+			for i in range(3):
+				self.poses[no][i] =  new_pose[i]
+
+	def computeICPBetweenScans(self,no1,no2, init_x = 0 , init_y = 0, init_yaw = 0):
+		example = cython_catkin_example.PyCCExample()
+		test_cloud = self.getCloudFromIndex(no1)
+		test_cloud2 = self.getCloudFromIndex(no2)
+		cython_icp_result = example.processICP(np.array([x[0] for x in test_cloud], np.float32),np.array([x[1] for x in test_cloud], np.float32),np.array([x[0] for x in test_cloud2], np.float32),np.array([x[1] for x in test_cloud2], np.float32), init_x, init_y, init_yaw)
+		return cython_icp_result
+
+	def getInitialValues(self,no1,no2):
+		no1_pose = self.poses[no1]
+		no2_pose = self.poses[no2]
+		x = no2_pose[0] - no1_pose[0]
+		y = no2_pose[1] - no1_pose[1]
+		yaw = no2_pose[2] - no1_pose[2]
+		return x,y,yaw
+	def recorrectPoseUseICP(self,no1,no2):
+		init_pose = self.getInitialValues(no1,no2)
+		new_rel = self.computeICPBetweenScans(no1,no2,init_x=init_pose[0], init_y=init_pose[1], init_yaw=init_pose[2])
+		self.poses[no2][0] = new_rel[0] + self.poses[no1][0]
+		self.poses[no2][1] = new_rel[1] + self.poses[no1][1]
+		self.poses[no2][2] = new_rel[2] + self.poses[no1][2]
+		self.corrected_edges[(no1,no2)] = new_rel
+
+	def createEdgeString(self, no1,no2):
+		if (no1,no2) in self.corrected_edges:
+			new_rel = self.corrected_edges[(no1,no2)]
+			str_edge_added = ''
+			str_edge_added = str_edge_added + 'EDGE2 '
+			str_edge_added = str_edge_added + format(no2+1,'d') + ' '
+			str_edge_added = str_edge_added + format(no1+1,'d') + ' '
+			str_edge_added = str_edge_added + format(new_rel[0],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[1],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[2],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[3],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[4],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[5],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[6],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[7],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[8],'.4f') + ' '
+			str_edge_added = str_edge_added + '\n'
+		else:
+			new_rel = self.getInitialValues(no1,no2)
+			str_edge_added = ''
+			str_edge_added = str_edge_added + 'EDGE2 '
+			str_edge_added = str_edge_added + format(no2+1,'d') + ' '
+			str_edge_added = str_edge_added + format(no1+1,'d') + ' '
+			str_edge_added = str_edge_added + format(new_rel[0],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[1],'.4f') + ' '
+			str_edge_added = str_edge_added + format(new_rel[2],'.4f') + ' 1 0 1 1 0 0'
+			str_edge_added = str_edge_added + '\n'
+		return str_edge_added
+
+
