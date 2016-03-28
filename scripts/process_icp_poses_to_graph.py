@@ -25,6 +25,7 @@ import os, sys
 opt_parser = OptionParser()
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
 opt_parser.add_option('--lc', dest='loop_closure',  action='store_true', default=False)
+opt_parser.add_option('--uc', dest='use_accumulated',  action='store_true', default=False)
 opt_parser.add_option('--nf', dest='icp_use_filtered_data',  action='store_false', default=True)
 
 opt_parser.add_option('-s','--start', dest='start_index',type='int')
@@ -55,9 +56,12 @@ print  opts, args
 # f_handle = open('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/icp_poses.txt','r')
 
 
-f_handle = open(os.path.join(dir_prefix , 'icp_poses.txt'),'r')
-
-f_handle_w = open(os.path.join(dir_prefix ,'icp_poses.graph'),'w')
+if not opts.use_accumulated:
+	f_handle = open(os.path.join(dir_prefix , 'icp_poses.txt'),'r')
+	f_handle_w = open(os.path.join(dir_prefix ,'icp_poses.graph'),'w')
+else:
+	f_handle = open(os.path.join(dir_prefix , 'icp_lm_poses.txt'),'r')
+	f_handle_w = open(os.path.join(dir_prefix ,'icp_lm_poses.graph'),'w')
 # f_handle_w = open('icp_poses_lm.graph','w')
 
 
@@ -120,10 +124,12 @@ def computeICPBetweenScans(no1,no2, init_x = 0 , init_y = 0, init_yaw = 0):
 
 	# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(no1)+'.txt')
 
-	if opts.icp_use_filtered_data:
-		test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_filtered_'+str(no1)+'.txt'))
-	else:
-		test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_'+str(no1)+'.txt'))
+	if opts.use_accumulated:
+		test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_lm_filtered_'+str(no1)+'.txt'))
+		if opts.icp_use_filtered_data:
+			test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_filtered_'+str(no1)+'.txt'))
+		else:
+			test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_'+str(no1)+'.txt'))
 
 	H_points = [[p[0], p[1],1] for p in test_cloud]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
@@ -140,10 +146,12 @@ def computeICPBetweenScans(no1,no2, init_x = 0 , init_y = 0, init_yaw = 0):
 
 	# test_cloud2 = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(no2)+'.txt')
 
-	if opts.icp_use_filtered_data:
-		test_cloud2 = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_filtered_'+str(no2)+'.txt'))
-	else:
-		test_cloud2 = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_'+str(no2)+'.txt'))
+	if opts.use_accumulated:
+		test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_lm_filtered_'+str(no2)+'.txt'))
+		if opts.icp_use_filtered_data:
+			test_cloud2 = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_filtered_'+str(no2)+'.txt'))
+		else:
+			test_cloud2 = read2DPointsFromTextFile(os.path.join(dir_prefix,'scan_'+str(no2)+'.txt'))
 
 	H_points = [[p[0], p[1],1] for p in test_cloud2]
 	# H_points = [[np.float32(p[0]), np.float32(p[1]),1] for p in test_cloud]
