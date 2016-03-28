@@ -28,6 +28,8 @@ opt_parser.add_option('-a', dest='show_anim',  action='store_true', default=Fals
 opt_parser.add_option('--ns', dest='not_static',  action='store_true', default=False)
 opt_parser.add_option('--pnm', dest='not_plot_map',  action='store_true', default=False)
 opt_parser.add_option('--ua', dest='use_accumulated',  action='store_true', default=False)
+opt_parser.add_option('--uri', dest='use_orig_interwoven',  action='store_true', default=False)
+opt_parser.add_option('--scp', dest='save_add_edges',  action='store_true', default=False)
 opts, args = opt_parser.parse_args(sys.argv[1:])
 dir_prefix = opts.dir_prefix
 
@@ -63,21 +65,36 @@ if opts.mod_pose is not None:
 		ccscan.modPose(int(mp[0]), [mp[1], mp[2], math.radians(mp[3])], additive_pose = opt_additive_pose)
 if opts.recorrect_pose is not None:
 	for rp in opts.recorrect_pose:
+		opt_use_original_interwoven = False
+		if opts.use_orig_interwoven is not None:
+			opt_use_original_interwoven = opts.use_orig_interwoven
 		ccscan.recorrectPoseUseICP(rp[0],rp[1])
-		print ccscan.createEdgeString(rp[0],rp[1])
-if not opts.not_static and opts.indices is not None:
+		# print ccscan.createEdgeString(rp[0],rp[1], use_original_interwoven=opt_use_original_interwoven)
+	if opts.save_add_edges:
+		ccscan.createEdgeString(rp[0],rp[1], use_original_interwoven=opt_use_original_interwoven)
+		ccscan.putLastEdgeStringIntoGraphFile()
+
+if not opts.not_static: 
 	fig, ax = plt.subplots()
 	if opts.plot_axes_limit is not None:
 		ax.axis(opts.plot_axes_limit)
 	ax.set_aspect('equal','datalim')
 	if not opts.not_plot_map:
 		plotMap(ccscan, ax)
-	colors = cm.rainbow(np.linspace(0, 1, len(opts.indices)))
-	_index = 0
-	for l in opts.indices:
-		plotScan(l, ccscan, ax, color=colors[_index])
-		print ccscan.getPose(l)
-		_index = _index + 1
+	if opts.indices is not None:
+		colors = cm.rainbow(np.linspace(0, 1, len(opts.indices)))
+		_index = 0
+		for l in opts.indices:
+			plotScan(l, ccscan, ax, color=colors[_index])
+			print ccscan.getPose(l)
+			_index = _index + 1
+	else:
+		# colors = cm.rainbow(np.linspace(0, 1, len(ccscan.poses)))
+		_index = 0
+		for l in range(len(ccscan.poses)):
+			plotScan(l, ccscan, ax, color='magenta')
+			print ccscan.getPose(l)
+			_index = _index + 1
 	plt.show(True)
 
 

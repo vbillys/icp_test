@@ -140,7 +140,8 @@ for point in points:
 		while travelled_dist > next_capture_dist:
 			next_capture_dist = next_capture_dist + g_thresh
 		# print "captured a local map", travelled_dist
-		accum_scan_indices.append([accum_scan_index,index_point])
+		# accum_scan_indices.append([accum_scan_index,index_point])
+		accum_scan_indices.append([accum_scan_index,accum_scan_index])
 		accum_scan_index = []
 	index_point = index_point + 1
 
@@ -161,8 +162,10 @@ def translateScan2D(points_2d, x, y):
 
 
 def getLocalMap(indexes):
-	ref_node_index = indexes[1]
-	pose_local_map = list(points[ref_node_index-offset]) + [int(ref_node_index)]
+	# ref_node_index = indexes[1]
+	ref_node_index = indexes[1][-1]
+	# pose_local_map = list(points[ref_node_index-offset]) + [int(ref_node_index)]
+	pose_local_map = list(points[ref_node_index-offset]) + map(int,indexes[1])
 	local_map = []
 	for iid in indexes[0]:
 		if iid == ref_node_index:

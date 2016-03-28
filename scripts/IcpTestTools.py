@@ -202,7 +202,7 @@ class AnimatedScatter(object):
 		return _to_clear
 
 class ICPScan(object):
-	def __init__(self, dir_prefix, load_map=False, for_anim=False, axis_limit = None , use_accumulated  = False):
+	def __init__(self, dir_prefix, load_map=False, for_anim=False, axis_limit = None , use_accumulated  = False, load_orig = True):
 		if not use_accumulated:
 			self.f_handle_poses = open(os.path.join(dir_prefix , 'icp_poses.txt'),'r')
 			self.poses = getFloatNumberFromReadLines(self.f_handle_poses, 12)
@@ -211,8 +211,13 @@ class ICPScan(object):
 			self.f_handle_poses = open(os.path.join(dir_prefix , 'icp_lm_poses.txt'),'r')
 			self.poses = getFloatNumberListFromReadLines(self.f_handle_poses) #, 13)
 			# self.poses = [list(pose) for pose in self.poses]
+			if load_orig:
+				self.f_handle_poses_orig = open(os.path.join(dir_prefix , 'icp_poses.txt'),'r')
+				self.poses_orig = getFloatNumberFromReadLines(self.f_handle_poses_orig, 12)
+				self.poses_orig = [list(pose) for pose in self.poses_orig]
 		self.dir_prefix = dir_prefix
 		self.use_accumulated = use_accumulated
+		self.load_orig = load_orig
 		if load_map:
 			self.f_handle_open_map = open(os.path.join(dir_prefix, 'map.txt'), 'rb')
 
@@ -281,8 +286,12 @@ class ICPScan(object):
 	def getCurrentBuiltMap(self):
 		return self.points_map_x, self.points_map_y
 
-	def getPose(self,no):
-		return self.poses[no]
+	def getPose(self,no, use_original = False):
+		if  use_original:
+			# print no, len(self.poses_orig)
+			return self.poses_orig[no]
+		else:
+			return self.poses[no]
 
 	def modPose(self,no, new_pose, additive_pose=False):
 		if additive_pose:
@@ -314,33 +323,90 @@ class ICPScan(object):
 		self.poses[no2][2] = new_rel[2] + self.poses[no1][2]
 		self.corrected_edges[(no1,no2)] = new_rel
 
-	def createEdgeString(self, no1,no2):
-		if (no1,no2) in self.corrected_edges:
-			new_rel = self.corrected_edges[(no1,no2)]
-			str_edge_added = ''
-			str_edge_added = str_edge_added + 'EDGE2 '
-			str_edge_added = str_edge_added + format(no2+1,'d') + ' '
-			str_edge_added = str_edge_added + format(no1+1,'d') + ' '
-			str_edge_added = str_edge_added + format(new_rel[0],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[1],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[2],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[3],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[4],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[5],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[6],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[7],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[8],'.4f') + ' '
-			str_edge_added = str_edge_added + '\n'
+	def putLastEdgeStringIntoGraphFile(self):
+		if self.use_original_interwoven:
+			fh = open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'a')
+			fh.write (self.last_created_edge_string)
+			fh.close()
 		else:
-			new_rel = self.getInitialValues(no1,no2)
+			fh = open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'a')
+			fh.write (self.last_created_edge_string)
+			fh.close()
+
+
+	def createEdgeString(self, no1,no2, use_original_interwoven=False):
+		self.use_original_interwoven = use_original_interwoven
+		if self.use_accumulated and use_original_interwoven:
+			print no1, no2
+			if (no1,no2) in self.corrected_edges:
+				new_rel = self.corrected_edges[(no1,no2)]
+			else:
+				new_rel = self.getInitialValues(no1,no2)
+			orig_indices1 = map(int,self.getPose(no1)[12:])#.reverse()
+			orig_indices2 = map(int,self.getPose(no2)[12:])#.reverse()
+			# print orig_indices1, orig_indices2
+			# print self.getPose(no1), self.getPose(no2)
+			# print self.getPose(orig_indices1[-1], use_original=True)
+			# print self.getPose(orig_indices2[-1], use_original=True)
+			pose_1 = self.getPose(no1)
+			pose_2 = self.getPose(no2)
 			str_edge_added = ''
-			str_edge_added = str_edge_added + 'EDGE2 '
-			str_edge_added = str_edge_added + format(no2+1,'d') + ' '
-			str_edge_added = str_edge_added + format(no1+1,'d') + ' '
-			str_edge_added = str_edge_added + format(new_rel[0],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[1],'.4f') + ' '
-			str_edge_added = str_edge_added + format(new_rel[2],'.4f') + ' 1 0 1 1 0 0'
-			str_edge_added = str_edge_added + '\n'
-		return str_edge_added
+			for indices2 in orig_indices2:
+				this_index2_pose = self.getPose(indices2, use_original=True)
+				for indices1 in orig_indices1:
+					this_index1_pose = self.getPose(indices1, use_original=True)
+					delta_x = new_rel[0] -(pose_2[0] - this_index2_pose[0]) + (pose_1[0]  - this_index1_pose[0])
+					delta_y = new_rel[1] -(pose_2[1] - this_index2_pose[1]) + (pose_1[1]  - this_index1_pose[1])
+					delta_yaw = new_rel[2] -(pose_2[2] - this_index2_pose[2]) + (pose_1[2]  - this_index1_pose[2])
+					if (no1,no2) in self.corrected_edges:
+						str_edge_added = str_edge_added + createToroEdgeString(indices2+1, indices1+1,  delta_x, delta_y, delta_yaw, new_rel[3], new_rel[4], new_rel[5], new_rel[6], new_rel[7], new_rel[8])
+					else:
+						str_edge_added = str_edge_added + createToroEdgeString(indices2+1, indices1+1,  delta_x, delta_y, delta_yaw, 1, 0, 1, 1, 0, 0)
+			self.last_created_edge_string = str_edge_added
+			return str_edge_added
+		else:
+			if (no1,no2) in self.corrected_edges:
+				new_rel = self.corrected_edges[(no1,no2)]
+				str_edge_added = ''
+				str_edge_added = str_edge_added + 'EDGE2 '
+				str_edge_added = str_edge_added + format(no2+1,'d') + ' '
+				str_edge_added = str_edge_added + format(no1+1,'d') + ' '
+				str_edge_added = str_edge_added + format(new_rel[0],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[1],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[2],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[3],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[4],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[5],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[6],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[7],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[8],'.4f') + ' '
+				str_edge_added = str_edge_added + '\n'
+			else:
+				new_rel = self.getInitialValues(no1,no2)
+				str_edge_added = ''
+				str_edge_added = str_edge_added + 'EDGE2 '
+				str_edge_added = str_edge_added + format(no2+1,'d') + ' '
+				str_edge_added = str_edge_added + format(no1+1,'d') + ' '
+				str_edge_added = str_edge_added + format(new_rel[0],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[1],'.4f') + ' '
+				str_edge_added = str_edge_added + format(new_rel[2],'.4f') + ' 1 0 1 1 0 0'
+				str_edge_added = str_edge_added + '\n'
+			self.last_created_edge_string = str_edge_added
+			return str_edge_added
 
-
+def createToroEdgeString(observed_vertex_id ,observing_vertex_id ,forward ,sideward ,rotate ,inf_ff ,inf_fs ,inf_ss ,inf_rr ,inf_fr ,inf_sr ):
+	str_edge_added = ''
+	str_edge_added = str_edge_added + 'EDGE2 '
+	str_edge_added = str_edge_added + format(observed_vertex_id ,'d') + ' '
+	str_edge_added = str_edge_added + format(observing_vertex_id,'d') + ' '
+	str_edge_added = str_edge_added + format(forward ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(sideward ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(rotate ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_ff ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_fs ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_ss ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_rr ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_fr ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_sr ,'.4f') + ' '
+	str_edge_added = str_edge_added + '\n'
+	return str_edge_added
