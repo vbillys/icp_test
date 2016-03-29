@@ -43,6 +43,7 @@ opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit', nargs=4 , type
 # opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit_set',  action='store_true', default=False)
 opt_parser.add_option('--sm', dest='save_map',  action='store_true', default=False)
 opt_parser.add_option('--pm', dest='use_processed_map',  action='store_true', default=False)
+opt_parser.add_option('--ua', dest='use_accumulated',  action='store_true', default=False)
 opt_parser.add_option('-s','--start', dest='start_index',type='int')
 opt_parser.add_option('-e','--end', dest='end_index', type='int')
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
@@ -62,7 +63,7 @@ print sys.argv[2:], opts, args
 if opts.start_index is not None:
 	start_index = int(opts.start_index)
 if opts.end_index is not None:
-	start_index = int(opts.end_index)
+	end_index = int(opts.end_index)
 
 print start_index, end_index
 # exit()
@@ -176,12 +177,17 @@ class ZipInputStream:
 # f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-115401_sss/icp_poses.graph','r')
 # f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/icp_poses.graph','r')
 
-
-f_handle2 = open(os.path.join(dir_prefix , 'icp_poses.graph'),'r')
+if opts.use_accumulated:
+	f_handle2 = open(os.path.join(dir_prefix , 'icp_lm_poses.graph'),'r')
+else:
+	f_handle2 = open(os.path.join(dir_prefix , 'icp_poses.graph'),'r')
 
 if opts.use_processed_map:
 	# f_handle3 = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses-treeopt-initial.graph','r')
-	f_handle3 = open(os.path.join(dir_prefix, 'icp_poses-treeopt-final.graph'),'r')
+	if opts.use_accumulated:
+		f_handle3 = open(os.path.join(dir_prefix, 'icp_lm_poses-treeopt-final.graph'),'r')
+	else:
+		f_handle3 = open(os.path.join(dir_prefix, 'icp_poses-treeopt-final.graph'),'r')
 
 def getFloatNumberFromReadLines(f_handle, no_params):
 	f_content = f_handle.readlines()
@@ -304,36 +310,47 @@ else:
 	vertices_chosen = vertices2
 	last_x = vertices2[0][0]
 	last_y = vertices2[0][1]
-for vertex in vertices_chosen:
-# for point in points:
-	if checkpoints % 1 == 0: #25
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(vertex[0])+'.txt')
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_filtered_'+str(vertex[0])+'.txt')
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-175207/scan_filtered_'+str(vertex[0])+'.txt')
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(checkpoints)+'.txt')
+if opts.use_accumulated:
+	for vertex in vertices_chosen[1:]:
+		print vertex
+		test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix , 'scan_lm_filtered_'+str(vertex[0]-1)+'.txt'))
+		t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(vertex[1],vertex[2],-vertex[3]))
+		point_t = point_t + t_point_t
+else:
+	for vertex in vertices_chosen:
+	# for point in points:
+		if checkpoints % 1 == 0: #25
+		# if not (checkpoints == 0 and opts.use_accumulated):
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_lm_filtered_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-174721/scan_filtered_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-175207/scan_filtered_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/medialink/20150918-180619/scan_filtered_'+str(checkpoints)+'.txt')
 
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/mobile_base/skygarden1/scan_filtered_'+str(vertex[0])+'.txt')
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/mobile_base/skygarden1/scan_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/mobile_base/skygarden1/scan_filtered_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/mobile_base/skygarden1/scan_'+str(vertex[0])+'.txt')
 
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(vertex[0])+'.txt')
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-120036_sss/scan_filtered_'+str(vertex[0])+'.txt')
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115715_sss/scan_filtered_'+str(vertex[0])+'.txt')
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115401_sss/scan_filtered_'+str(vertex[0])+'.txt')
-		# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/scan_filtered_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/scan_filtered_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-120036_sss/scan_filtered_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115715_sss/scan_filtered_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115401_sss/scan_filtered_'+str(vertex[0])+'.txt')
+			# test_cloud = read2DPointsFromTextFile('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/scan_filtered_'+str(vertex[0])+'.txt')
 
 
-		test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix , 'scan_filtered_'+str(vertex[0])+'.txt'))
+			# if opts.use_accumulated:
+				# test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix , 'scan_lm_filtered_'+str(vertex[0])+'.txt'))
+			# else:
+			test_cloud = read2DPointsFromTextFile(os.path.join(dir_prefix , 'scan_filtered_'+str(vertex[0])+'.txt'))
 
-		travelled_dist = travelled_dist + math.hypot(last_x - vertex[1], last_y - vertex[2])
-		last_x = vertex[1]
-		last_y = vertex[2]
-		if travelled_dist > next_capture_dist:
-			while travelled_dist > next_capture_dist:
-				next_capture_dist = next_capture_dist + g_thresh
-			t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(vertex[1],vertex[2],-vertex[3]))
-			# t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(point[0],point[1],-point[2]))
-			point_t = point_t + t_point_t
-	checkpoints = checkpoints + 1
+			travelled_dist = travelled_dist + math.hypot(last_x - vertex[1], last_y - vertex[2])
+			last_x = vertex[1]
+			last_y = vertex[2]
+			if travelled_dist > next_capture_dist:
+				while travelled_dist > next_capture_dist:
+					next_capture_dist = next_capture_dist + g_thresh
+				t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(vertex[1],vertex[2],-vertex[3]))
+				# t_point_t = transformCloud(test_cloud, createTransfromFromXYYaw(point[0],point[1],-point[2]))
+				point_t = point_t + t_point_t
+		checkpoints = checkpoints + 1
 ax.scatter ([x[0] for x in point_t],[x[1] for x in point_t], color='green', s=.3)
 # fig.canvas.draw()
 plt.show(True)
