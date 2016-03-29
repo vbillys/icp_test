@@ -30,6 +30,7 @@ opt_parser.add_option('--pnm', dest='not_plot_map',  action='store_true', defaul
 opt_parser.add_option('--ua', dest='use_accumulated',  action='store_true', default=False)
 opt_parser.add_option('--uri', dest='use_orig_interwoven',  action='store_true', default=False)
 opt_parser.add_option('--scp', dest='save_add_edges',  action='store_true', default=False)
+opt_parser.add_option('--pnp', dest='no_poses',  action='store_true', default=False)
 opts, args = opt_parser.parse_args(sys.argv[1:])
 dir_prefix = opts.dir_prefix
 
@@ -89,12 +90,13 @@ if not opts.not_static:
 			print ccscan.getPose(l)
 			_index = _index + 1
 	else:
-		# colors = cm.rainbow(np.linspace(0, 1, len(ccscan.poses)))
-		_index = 0
-		for l in range(len(ccscan.poses)):
-			plotScan(l, ccscan, ax, color='magenta')
-			print ccscan.getPose(l)
-			_index = _index + 1
+		if not opts.no_poses:
+			# colors = cm.rainbow(np.linspace(0, 1, len(ccscan.poses)))
+			_index = 0
+			for l in range(len(ccscan.poses)):
+				plotScan(l, ccscan, ax, color='magenta')
+				print ccscan.getPose(l)
+				_index = _index + 1
 	plt.show(True)
 
 
