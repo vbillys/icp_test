@@ -26,7 +26,7 @@ end_index = None
 if opts.start_index is not None:
 	start_index = int(opts.start_index)
 if opts.end_index is not None:
-	start_index = int(opts.end_index)
+	end_index = int(opts.end_index)
 dir_prefix = opts.dir_prefix
 print  opts, args
 
