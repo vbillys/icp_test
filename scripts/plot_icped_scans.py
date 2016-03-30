@@ -47,6 +47,8 @@ opt_parser.add_option('--ua', dest='use_accumulated',  action='store_true', defa
 opt_parser.add_option('-s','--start', dest='start_index',type='int')
 opt_parser.add_option('-e','--end', dest='end_index', type='int')
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
+opt_parser.add_option('--ogifn', dest='initial_graph_filename', type='string', default=None)
+opt_parser.add_option('--ogffn', dest='final_graph_filename', type='string', default=None)
 opt_parser.add_option('-g','--gthresh', dest='g_thresh', type='float', default=10.)
 opts, args = opt_parser.parse_args(sys.argv[1:])
 
@@ -177,17 +179,24 @@ class ZipInputStream:
 # f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-115401_sss/icp_poses.graph','r')
 # f_handle2 = open('/home/avavav/avdata/alphard/onenorth/20150821-115223_sss/icp_poses.graph','r')
 
-if opts.use_accumulated:
-	f_handle2 = open(os.path.join(dir_prefix , 'icp_lm_poses.graph'),'r')
+if opts.initial_graph_filename is not None:
+	f_handle2 = open(os.path.join(dir_prefix, opts.initial_graph_filename),'r')
 else:
-	f_handle2 = open(os.path.join(dir_prefix , 'icp_poses.graph'),'r')
-
-if opts.use_processed_map:
-	# f_handle3 = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses-treeopt-initial.graph','r')
 	if opts.use_accumulated:
-		f_handle3 = open(os.path.join(dir_prefix, 'icp_lm_poses-treeopt-final.graph'),'r')
+		f_handle2 = open(os.path.join(dir_prefix , 'icp_lm_poses.graph'),'r')
 	else:
-		f_handle3 = open(os.path.join(dir_prefix, 'icp_poses-treeopt-final.graph'),'r')
+		f_handle2 = open(os.path.join(dir_prefix , 'icp_poses.graph'),'r')
+
+if opts.final_graph_filename is not None:
+	f_handle3 = open(os.path.join(dir_prefix, opts.final_graph_filename),'r')
+else:
+	
+	if opts.use_processed_map:
+		# f_handle3 = open('/home/avavav/avdata/alphard/onenorth/20150821-114839_sss/icp_poses-treeopt-initial.graph','r')
+		if opts.use_accumulated:
+			f_handle3 = open(os.path.join(dir_prefix, 'icp_lm_poses-treeopt-final.graph'),'r')
+		else:
+			f_handle3 = open(os.path.join(dir_prefix, 'icp_poses-treeopt-final.graph'),'r')
 
 def getFloatNumberFromReadLines(f_handle, no_params):
 	f_content = f_handle.readlines()
