@@ -516,12 +516,12 @@ class MapScan(ICPScan):
 	def loadGraphVertices(self, use_original = False, remove_zero_vertex = True, use_processed_map = False):
 		if self.use_accumulated and not use_original:
 			if use_processed_map:
-				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses-treeopt-final.graph'), 'r'))
+				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses-treeopt-final.graph'), 'r'), processed = True)
 			else:
 				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r'))
 		else:
 			if use_processed_map:
-				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses-treeopt-final.graph'), 'r'))
+				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses-treeopt-final.graph'), 'r'), processed = True)
 			else:
 				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r'))
 		if remove_zero_vertex:
