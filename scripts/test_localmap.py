@@ -22,6 +22,7 @@ from cython_catkin_example import cython_catkin_example
 from optparse import OptionParser
 import os, sys
 
+import IcpTestTools
 
 opt_parser = OptionParser()
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
@@ -29,6 +30,7 @@ opt_parser.add_option('-m','--mapdirectory', dest='dir_prefix_map', type='string
 opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit', nargs=4 , type='float')
 opt_parser.add_option('-i','--initial_pose', dest='initial_pose', nargs=3 , type='float')
 opt_parser.add_option('--nm', dest='no_matching',  action='store_true', default=False)
+opt_parser.add_option('--sa', dest='save_add_to_graph',  action='store_true', default=False)
 opts, args = opt_parser.parse_args(sys.argv[1:])
 dir_prefix = opts.dir_prefix
 dir_prefix_map = opts.dir_prefix_map
@@ -196,7 +198,8 @@ ax.scatter ([x[0] for x in point_t],[x[1] for x in point_t], color='green', s=.3
 # test_poses = getFloatNumberFromReadLines(open('/home/avavav/avdata/alphard/medialink/20150918-174721/icp_lm_poses.txt','r'), 13)
 # test_poses = getFloatNumberFromReadLines(open('/home/avavav/avdata/alphard/medialink/20150918-175207/icp_lm_poses.txt','r'), 13)
 
-test_poses = getFloatNumberFromReadLines(open(os.path.join(dir_prefix , 'icp_lm_poses.txt'),'r'), 13)
+# test_poses = getFloatNumberFromReadLines(open(os.path.join(dir_prefix , 'icp_lm_poses.txt'),'r'), 13)
+test_poses = IcpTestTools.getFloatNumberListFromReadLines(open(os.path.join(dir_prefix , 'icp_lm_poses.txt'),'r'))
 # n = 1 
 vertices_plot = []
 odom_plot = []
@@ -324,7 +327,7 @@ for n in range (0, len(test_poses)):
 
 	# vertices_plot.append([graphVertices[int(test_poses[n][-1])][1],graphVertices[int(test_poses[n][-1])][2]])
 	if not opts.no_matching:
-		icp_plot.append([icp_pose[0],icp_pose[1]])
+		icp_plot.append([icp_pose[0],icp_pose[1], icp_pose[2]])
 
 # test_local_map_aligned = transformCloud(test_local_map, createTransfromFromXYYaw(icp_pose[0], icp_pose[1], -icp_pose[2]))
 # ax.scatter ([x[0] for x in test_local_map_aligned ],[x[1] for x in test_local_map_aligned ], color='blue', s=1.3)
@@ -340,4 +343,24 @@ print odom_plot
 
 plt.show(True)
 
+if not opts.save_add_to_graph:
+	exit()
 
+
+map_obj = IcpTestTools.MapScan(dir_prefix_map)
+test_lm_obj = IcpTestTools.MapScan(dir_prefix, use_accumulated=True)
+for n in range (0, len(test_poses)):
+	# str_vertex_new = str_vertex_new + IcpTestTools.createToroVertexString(n, icp_plot[n][0], icp_plot[n][1], icp_plot[n][2])
+	test_lm_obj.modPose(n, icp_plot[n], with_original = True)
+map_obj.loadGraphVertices(use_processed_map = True)
+# print map_obj.loadGraphVertices()
+# print test_lm_obj.getAllOriginalPoses()
+# print map_obj.appendVerticesWithSetPoses(test_lm_obj.getAllOriginalPoses(), use_original_index = True)
+map_obj.appendVerticesWithSetPoses(test_lm_obj.getAllOriginalPoses(), use_original_index = True)
+map_obj.createVertexStringFromVertices()
+map_obj.saveGraphVertices()
+
+# str_vertex_new = test_lm_obj.createVertexStringFromPoses(include_zero_vertex = False, start_index = 1, use_original = True, use_original_index = True)
+# str_vertex_new = test_lm_obj.createVertexStringFromPoses(include_zero_vertex = False, start_index = 5000, use_original = True)
+# print str_vertex_new
+# print test_lm_obj.createVertexStringFromPoses(include_zero_vertex = False)

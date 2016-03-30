@@ -7,6 +7,52 @@ import pylab as plt
 import matplotlib.animation as animation
 from cython_catkin_example import cython_catkin_example
 
+
+def createToroEdgeString(observed_vertex_id ,observing_vertex_id ,forward ,sideward ,rotate ,inf_ff ,inf_fs ,inf_ss ,inf_rr ,inf_fr ,inf_sr ):
+	str_edge_added = ''
+	str_edge_added = str_edge_added + 'EDGE2 '
+	str_edge_added = str_edge_added + format(observed_vertex_id ,'d') + ' '
+	str_edge_added = str_edge_added + format(observing_vertex_id,'d') + ' '
+	str_edge_added = str_edge_added + format(forward ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(sideward ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(rotate ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_ff ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_fs ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_ss ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_rr ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_fr ,'.4f') + ' '
+	str_edge_added = str_edge_added + format(inf_sr ,'.4f') + ' '
+	str_edge_added = str_edge_added + '\n'
+	return str_edge_added
+
+def createToroVertexString(vertex_id, x, y, yaw):
+	str_vertex = ''
+	str_vertex = str_vertex + 'VERTEX2 '
+	str_vertex = str_vertex + format(vertex_id,'d') + ' '
+	str_vertex = str_vertex + format(x,'.4f') + ' '
+	str_vertex = str_vertex + format(y,'.4f') + ' '
+	str_vertex = str_vertex + format(yaw,'.4f')
+	str_vertex = str_vertex + '\n'
+	return str_vertex
+
+def getVertexFromGraphAutoCount(f_handle,  processed=False):
+	f_content = f_handle.readlines()
+	points = []
+	# for str_ in f_content:
+	for i in range(0,len(f_content)):
+		strs = f_content[i].strip()
+		strs_splitted =  strs.split()
+		# print strs_splitted
+		if strs_splitted[0] == "VERTEX" or strs_splitted[0] == "VERTEX2":
+			noid = int(strs_splitted[1])
+			if processed:
+				coord = [-float(strs_splitted[2]), float(strs_splitted[3]), -float(strs_splitted[4])]
+			else:
+				coord = [float(strs_splitted[2]), float(strs_splitted[3]), float(strs_splitted[4])]
+			points.append([noid]+coord)
+	return points
+
+
 def getFloatNumberFromReadLines(f_handle, no_params):
 	f_content = f_handle.readlines()
 	points = []
@@ -119,7 +165,8 @@ def accumulateIcpTransform(icp_result, x, y, yaw):
 	yaw_icp_g = yaw + icp_result[2]
 	return x_icp_g, y_icp_g, yaw_icp_g
 
-
+def rotate2D(x,y,yaw):
+	return x*math.cos(yaw) - y*math.sin(yaw) , x*math.sin(yaw) + y*math.cos(yaw)
 
 
 
@@ -201,11 +248,13 @@ class AnimatedScatter(object):
 		_to_clear = _to_clear + [self.scatter_map]
 		return _to_clear
 
+
 class ICPScan(object):
 	def __init__(self, dir_prefix, load_map=False, for_anim=False, axis_limit = None , use_accumulated  = False, load_orig = True):
 		if not use_accumulated:
 			self.f_handle_poses = open(os.path.join(dir_prefix , 'icp_poses.txt'),'r')
-			self.poses = getFloatNumberFromReadLines(self.f_handle_poses, 12)
+			# self.poses = getFloatNumberFromReadLines(self.f_handle_poses, 12)
+			self.poses = getFloatNumberListFromReadLines(self.f_handle_poses)
 			self.poses = [list(pose) for pose in self.poses]
 		else:
 			self.f_handle_poses = open(os.path.join(dir_prefix , 'icp_lm_poses.txt'),'r')
@@ -213,7 +262,8 @@ class ICPScan(object):
 			# self.poses = [list(pose) for pose in self.poses]
 			if load_orig:
 				self.f_handle_poses_orig = open(os.path.join(dir_prefix , 'icp_poses.txt'),'r')
-				self.poses_orig = getFloatNumberFromReadLines(self.f_handle_poses_orig, 12)
+				# self.poses_orig = getFloatNumberFromReadLines(self.f_handle_poses_orig, 12)
+				self.poses_orig = getFloatNumberListFromReadLines(self.f_handle_poses_orig)
 				self.poses_orig = [list(pose) for pose in self.poses_orig]
 		self.dir_prefix = dir_prefix
 		self.use_accumulated = use_accumulated
@@ -293,13 +343,26 @@ class ICPScan(object):
 		else:
 			return self.poses[no]
 
-	def modPose(self,no, new_pose, additive_pose=False):
+	def modPose(self,no, new_pose, additive_pose=False, with_original=False):
+		orig_pose = self.poses[no][0:3]
 		if additive_pose:
 			for i in range(3):
 				self.poses[no][i] = self.poses[no][i] + new_pose[i]
 		else:
 			for i in range(3):
 				self.poses[no][i] =  new_pose[i]
+		if self.use_accumulated and with_original:
+			delta_pose = [-o +a for o,a in zip(orig_pose[0:3], self.poses[no][0:3])]
+			indices = self.getOriginalIndexFromAccumulatedIndex(no)
+			anchor_index = indices[-1]
+			for ii in indices:
+				self.poses_orig[ii][2] = self.poses_orig[ii][2] + delta_pose[2]
+				_x, _y = rotate2D(self.poses_orig[ii][0] - self.poses_orig[anchor_index][0]
+						, self.poses_orig[ii][1] - self.poses_orig[anchor_index][1]
+						,delta_pose[2])
+				self.poses_orig[ii][0] = _x+ delta_pose[0] + self.poses_orig[anchor_index][0]
+				self.poses_orig[ii][1] = _y+ delta_pose[1] + self.poses_orig[anchor_index][1]
+
 
 	def computeICPBetweenScans(self,no1,no2, init_x = 0 , init_y = 0, init_yaw = 0):
 		example = cython_catkin_example.PyCCExample()
@@ -394,19 +457,119 @@ class ICPScan(object):
 			self.last_created_edge_string = str_edge_added
 			return str_edge_added
 
-def createToroEdgeString(observed_vertex_id ,observing_vertex_id ,forward ,sideward ,rotate ,inf_ff ,inf_fs ,inf_ss ,inf_rr ,inf_fr ,inf_sr ):
-	str_edge_added = ''
-	str_edge_added = str_edge_added + 'EDGE2 '
-	str_edge_added = str_edge_added + format(observed_vertex_id ,'d') + ' '
-	str_edge_added = str_edge_added + format(observing_vertex_id,'d') + ' '
-	str_edge_added = str_edge_added + format(forward ,'.4f') + ' '
-	str_edge_added = str_edge_added + format(sideward ,'.4f') + ' '
-	str_edge_added = str_edge_added + format(rotate ,'.4f') + ' '
-	str_edge_added = str_edge_added + format(inf_ff ,'.4f') + ' '
-	str_edge_added = str_edge_added + format(inf_fs ,'.4f') + ' '
-	str_edge_added = str_edge_added + format(inf_ss ,'.4f') + ' '
-	str_edge_added = str_edge_added + format(inf_rr ,'.4f') + ' '
-	str_edge_added = str_edge_added + format(inf_fr ,'.4f') + ' '
-	str_edge_added = str_edge_added + format(inf_sr ,'.4f') + ' '
-	str_edge_added = str_edge_added + '\n'
-	return str_edge_added
+	def getOriginalPosesFromAccumulatedIndex(self, no):
+		orig_indices = map(int,self.getPose(no)[12:])#.reverse()
+		points = []
+		for ind in orig_indices:
+			points.append(self.getPose(ind, use_original = True))
+		return points, orig_indices
+
+	def getOriginalIndexFromAccumulatedIndex(self, no):
+		return map(int,self.getPose(no)[12:])
+
+class MapScan(ICPScan):
+	def __init__(self, dir_prefix, use_accumulated = False):
+		super(MapScan, self).__init__(dir_prefix, use_accumulated = use_accumulated)
+		self.vertices = []
+
+	def createVertexStringFromPoses(self, include_zero_vertex = True, start_index = 1, use_original = False, use_original_index = False):
+		if include_zero_vertex:
+			self.last_str_vertex = 'VERTEX2 0 0 0 0\n'
+		else:
+			self.last_str_vertex = ''
+		if (self.use_accumulated and use_original):
+			vertex_ii = 0
+			for n in range(0,len(self.poses)):
+				this_poses , this_poses_original_indices = self.getOriginalPosesFromAccumulatedIndex(n)
+				for i in range(0, len(this_poses)):
+					if use_original_index:
+						self.last_str_vertex = self.last_str_vertex + createToroVertexString(this_poses_original_indices[i], this_poses[i][0], this_poses[i][1], this_poses[i][2])
+					else:
+						self.last_str_vertex = self.last_str_vertex + createToroVertexString(vertex_ii+start_index, this_poses[i][0], this_poses[i][1], this_poses[i][2])
+					vertex_ii = vertex_ii + 1
+		else:
+			for n in range(0,len(self.poses)):
+				self.last_str_vertex = self.last_str_vertex + createToroVertexString(n+start_index, self.poses[n][0], self.poses[n][1], self.poses[n][2])
+		return self.last_str_vertex
+
+	def createVertexStringFromVertices(self, include_zero_vertex = True, start_index = 1,  use_original_index = True):
+		if include_zero_vertex:
+			self.last_str_vertex = 'VERTEX2 0 0 0 0\n'
+		else:
+			self.last_str_vertex = ''
+		for n in range(0,len(self.vertices)):
+			if use_original_index:
+				self.last_str_vertex = self.last_str_vertex + createToroVertexString(self.vertices[n][0], self.vertices[n][1], self.vertices[n][2], self.vertices[n][3])
+			else:
+				self.last_str_vertex = self.last_str_vertex + createToroVertexString(n+start_index, self.vertices[n][1], self.vertices[n][2], self.vertices[n][3])
+		return self.last_str_vertex
+
+	def getAllOriginalPoses(self):
+		poses_orig_result = []
+		for n in range(0,len(self.poses)):
+			this_poses , this_poses_original_indices = self.getOriginalPosesFromAccumulatedIndex(n)
+			for tp , tpi in zip(this_poses, this_poses_original_indices):
+				tp.append(tpi)
+				poses_orig_result.append(tp)
+		return poses_orig_result
+
+	def loadGraphVertices(self, use_original = False, remove_zero_vertex = True, use_processed_map = False):
+		if self.use_accumulated and not use_original:
+			if use_processed_map:
+				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses-treeopt-final.graph'), 'r'))
+			else:
+				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r'))
+		else:
+			if use_processed_map:
+				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses-treeopt-final.graph'), 'r'))
+			else:
+				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r'))
+		if remove_zero_vertex:
+			index_zero = [int(x[0]) for x in self.vertices].index(0)
+			del self.vertices[index_zero]
+		return self.vertices
+
+	def saveGraphVertices(self, use_original = False):
+		if self.use_accumulated and not use_original:
+			vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r'))
+			fh_str = open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r').readlines()
+			del fh_str[0:len(vertices)]
+			fh_str = fh_str + self.last_str_vertex.splitlines()
+			open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'w').writelines(fh_str)
+
+		else:
+			vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r'))
+			fh_str = open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r').readlines()
+			del fh_str[0:len(vertices)]
+			fh_str = self.last_str_vertex + "".join(fh_str)
+			# print fh_str
+			open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'w').write(fh_str)
+		# return self.vertices
+
+	def appendVerticesWithSetPoses(self, poses, start_id = 1, include_zero_vertex = False, use_original_index = False, reject_duplicate = True):
+		if use_original_index:
+			assert len(poses[0]) > 12 , "no vertex ids can be inferred"
+		mode_use_index = False
+		if len(poses[0]) < 12:
+			mode_use_index = True
+		if include_zero_vertex:
+			self.vertices = self.vertices + [0,  0,  0,  0]
+		index_pose = 0
+		if reject_duplicate:
+			_ids = [x[0] for x in self.vertices]
+			for pose in poses:
+				if not use_original_index:
+					if not index_pose  in _ids:
+						self.vertices.append([index_pose + start_id ,pose[0] ,pose[1] ,pose[2]])
+				else:
+					if not int(pose[-1]) in _ids:
+						self.vertices.append([int(pose[-1]), pose[0], pose[1], pose[2]])
+		else:
+			for pose in poses:
+				if not use_original_index:
+					self.vertices.append([index_pose + start_id ,pose[0] ,pose[1] ,pose[2]])
+				else:
+					self.vertices,append([int(pose[-1]), pose[0], pose[1], pose[2]])
+			index_pose = index_pose + 1
+		return self.vertices
+
