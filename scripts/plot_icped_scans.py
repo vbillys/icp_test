@@ -20,6 +20,8 @@ import sys, getopt
 from optparse import OptionParser
 import os
 
+import IcpTestTools
+
 # try:
 	# print 'input directory set to ' + sys.argv[1]
 	# dir_prefix = sys.argv[1]
@@ -45,6 +47,7 @@ opt_parser.add_option('--sm', dest='save_map',  action='store_true', default=Fal
 opt_parser.add_option('--pm', dest='use_processed_map',  action='store_true', default=False)
 opt_parser.add_option('--ua', dest='use_accumulated',  action='store_true', default=False)
 opt_parser.add_option('--rpm', dest='reverse_processed_map',  action='store_true', default=False)
+opt_parser.add_option('--pedges', dest='plot_edges',  action='store_true', default=False)
 opt_parser.add_option('-s','--start', dest='start_index',type='int')
 opt_parser.add_option('-e','--end', dest='end_index', type='int')
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
@@ -364,6 +367,22 @@ else:
 		checkpoints = checkpoints + 1
 ax.scatter ([x[0] for x in point_t],[x[1] for x in point_t], color='green', s=.3)
 # fig.canvas.draw()
+
+if opts.plot_edges:
+	map_obj = IcpTestTools.MapScan(dir_prefix, use_accumulated =opts.use_accumulated)
+	map_obj.loadGraphEdges(use_processed_map = opts.use_processed_map, reverse_processed_map = opts.use_processed_map)
+	# map_obj.loadGraphEdges()
+	map_obj.loadGraphVertices(use_processed_map = opts.use_processed_map, reverse_processed_map = opts.use_processed_map, remove_zero_vertex = False)
+	for key, value in map_obj.edges.iteritems():
+		observing_vertex = map_obj.getVertexFromVertexId(key[0])
+		observed_vertex = map_obj.getVertexFromVertexId(key[1])
+		# print observing_vertex, key, value
+		xxs = [ observing_vertex[1] ]
+		yys = [ observing_vertex[2] ]
+		xxs = xxs + [ observing_vertex[1] + value[0] * math.cos(observing_vertex[3]) - value[1] * math.sin(observing_vertex[3]) ]
+		yys = yys + [ observing_vertex[2] + value[0] * math.sin(observing_vertex[3]) + value[1] * math.cos(observing_vertex[3]) ]
+		# print xxs, yys, observing_vertex, observed_vertex
+		plt.plot (xxs, yys, 'o-', color = 'red', markersize=2)
 plt.show(True)
 
 def saveCloud2DToFile(f_h, points_2d):
