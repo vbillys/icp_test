@@ -27,6 +27,7 @@ opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', defa
 opt_parser.add_option('--lc', dest='loop_closure',  action='store_true', default=False)
 opt_parser.add_option('--uc', dest='use_accumulated',  action='store_true', default=False)
 opt_parser.add_option('--nf', dest='icp_use_filtered_data',  action='store_false', default=True)
+opt_parser.add_option('--oc', dest='override_covariances',  action='store_true', default=False)
 
 opt_parser.add_option('-s','--start', dest='start_index',type='int')
 opt_parser.add_option('-e','--end', dest='end_index', type='int')
@@ -364,13 +365,16 @@ for edge in points:
 		str_edge = str_edge + format(edge[3],'.4f') + ' '
 		str_edge = str_edge + format(edge[4],'.4f') + ' '
 		str_edge = str_edge + format(edge[5],'.4f') + ' '
-	str_edge = str_edge + format(edge[6],'.4f') + ' '
-	str_edge = str_edge + format(edge[7],'.4f') + ' '
-	str_edge = str_edge + format(edge[8],'.4f') + ' '
-	str_edge = str_edge + format(edge[9],'.4f') + ' '
-	str_edge = str_edge + format(edge[10],'.4f') + ' '
-	str_edge = str_edge + format(edge[11],'.4f')
-	# str_edge = str_edge + '1 0 1 1 0 0'
+	if opts.override_covariances:
+		str_edge = str_edge + '1 0 1 1 0 0'
+	else:
+		str_edge = str_edge + format(edge[6],'.4f') + ' '
+		str_edge = str_edge + format(edge[7],'.4f') + ' '
+		str_edge = str_edge + format(edge[8],'.4f') + ' '
+		str_edge = str_edge + format(edge[9],'.4f') + ' '
+		str_edge = str_edge + format(edge[10],'.4f') + ' '
+		str_edge = str_edge + format(edge[11],'.4f')
+		# str_edge = str_edge + '1 0 1 1 0 0'
 	str_edge = str_edge + '\n'
 	index_point = index_point + 1
 
