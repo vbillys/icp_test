@@ -44,6 +44,7 @@ opt_parser.add_option('-c','--axeslimit', dest='plot_axes_limit', nargs=4 , type
 opt_parser.add_option('--sm', dest='save_map',  action='store_true', default=False)
 opt_parser.add_option('--pm', dest='use_processed_map',  action='store_true', default=False)
 opt_parser.add_option('--ua', dest='use_accumulated',  action='store_true', default=False)
+opt_parser.add_option('--rpm', dest='reverse_processed_map',  action='store_true', default=False)
 opt_parser.add_option('-s','--start', dest='start_index',type='int')
 opt_parser.add_option('-e','--end', dest='end_index', type='int')
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
@@ -270,7 +271,8 @@ ng = 1651
 
 vertices2 =  getVertexFromGraphAutoCount(f_handle2)
 if opts.use_processed_map:
-	vertices3 =  getVertexFromGraphAutoCount(f_handle3, True)
+	vertices3 =  getVertexFromGraphAutoCount(f_handle3, opts.reverse_processed_map)
+	# vertices3 =  getVertexFromGraphAutoCount(f_handle3)
 
 # vertices2 =  getVertexFromGraph(f_handle2, ng)
 # vertices =  getVertexFromGraph(f_handle, ng, True)
