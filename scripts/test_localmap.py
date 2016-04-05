@@ -352,13 +352,49 @@ test_lm_obj = IcpTestTools.MapScan(dir_prefix, use_accumulated=True)
 for n in range (0, len(test_poses)):
 	# str_vertex_new = str_vertex_new + IcpTestTools.createToroVertexString(n, icp_plot[n][0], icp_plot[n][1], icp_plot[n][2])
 	test_lm_obj.modPose(n, icp_plot[n], with_original = True)
-map_obj.loadGraphVertices(use_processed_map = True)
+
+# map_obj.loadGraphVertices(use_processed_map = True, reverse_processed_map = True)
+# map_obj.loadGraphVertices(use_processed_map = False, reverse_processed_map = True, remove_zero_vertex = False)
+
+
+# map_obj.loadGraphEdges(use_processed_map = True)
+
 # print map_obj.loadGraphVertices()
 # print test_lm_obj.getAllOriginalPoses()
 # print map_obj.appendVerticesWithSetPoses(test_lm_obj.getAllOriginalPoses(), use_original_index = True)
+
+# print map_obj.edges
+
 map_obj.appendVerticesWithSetPoses(test_lm_obj.getAllOriginalPoses(), use_original_index = True)
-map_obj.createVertexStringFromVertices()
+# map_obj.appendVerticesWithSetPoses(test_lm_obj.getAllOriginalPoses(), start_id = 1651)
+map_obj.appendEdgesWithVertices(overwrite_duplicate = False)
+
+map_obj.loadGraphEdges(use_processed_map = True, add_to_current = True, reverse_processed_map = True)
+# map_obj.loadGraphEdges(use_processed_map = True, add_to_current = True, override_covariances= True)
+# map_obj.loadGraphEdges(use_processed_map = True, add_to_current = True)
+
+# print map_obj.vertices, len(map_obj.vertices)
+# print map_obj.appendEdgesWithVertices(), len(map_obj.edges)
+# map_obj.loadGraphVertices(use_processed_map = True, reverse_processed_map = True)
+# map_obj.loadGraphVertices(use_processed_map = True, reverse_processed_map = True, add_to_current=True)
+map_obj.loadGraphVertices(use_processed_map = True, reverse_processed_map = True, add_to_current=True, remove_zero_vertex = False)
+
+# map_obj.manuallyAddEdge(1650, 1651)
+# map_obj.manuallyAddEdge(1650, 2230)
+# map_obj.manuallyAddEdge(1250, 2230)
+map_obj.manuallyAddEdge(0, 2230, override_information = 1000000000)
+map_obj.manuallyAddEdge(0, 2445, override_information = 1000000000)
+
+print len(map_obj.vertices), len(map_obj.edges)
+# print map_obj.vertices[655:657]
+# print map_obj.edges[(655,656)]
+
+
+map_obj.createVertexStringFromVertices(include_zero_vertex = False)
+# map_obj.createVertexStringFromVertices()
+map_obj.createEdgeStringFromEdges()
 map_obj.saveGraphVertices()
+map_obj.saveGraphEdges()
 
 # str_vertex_new = test_lm_obj.createVertexStringFromPoses(include_zero_vertex = False, start_index = 1, use_original = True, use_original_index = True)
 # str_vertex_new = test_lm_obj.createVertexStringFromPoses(include_zero_vertex = False, start_index = 5000, use_original = True)

@@ -6,6 +6,7 @@ import string, StringIO
 import pylab as plt
 import matplotlib.animation as animation
 from cython_catkin_example import cython_catkin_example
+import collections
 
 
 def createToroEdgeString(observed_vertex_id ,observing_vertex_id ,forward ,sideward ,rotate ,inf_ff ,inf_fs ,inf_ss ,inf_rr ,inf_fr ,inf_sr ):
@@ -52,6 +53,36 @@ def getVertexFromGraphAutoCount(f_handle,  processed=False):
 			points.append([noid]+coord)
 	return points
 
+def getEdgeFromGraphAutoCount(f_handle,  processed=False, override_covariances=False):
+	f_content = f_handle.readlines()
+	points_dict = {} #[]
+	# for str_ in f_content:
+	for i in range(0,len(f_content)):
+		strs = f_content[i].strip()
+		strs_splitted =  strs.split()
+		# print strs_splitted
+		if strs_splitted[0] == "EDGE" or strs_splitted[0] == "EDGE2":
+			if processed:
+				observed_id = int(strs_splitted[2])
+				observing_id = int(strs_splitted[1])
+			else:
+				observed_id = int(strs_splitted[1])
+				observing_id = int(strs_splitted[2])
+
+
+			if processed:
+				if override_covariances:
+					coord = [-float(strs_splitted[3]), float(strs_splitted[4]), -float(strs_splitted[5])] + [1., 0., 1., 1., 0., 0.]
+				else:
+					coord = [-float(strs_splitted[3]), float(strs_splitted[4]), -float(strs_splitted[5])] + map(float, strs_splitted[6:])
+			else:
+				if override_covariances:
+					coord = [float(strs_splitted[3]), float(strs_splitted[4]), float(strs_splitted[5])] + [1., 0., 1., 1., 0., 0.]
+				else:
+					coord = [float(strs_splitted[3]), float(strs_splitted[4]), float(strs_splitted[5])] + map(float, strs_splitted[6:])
+			# points.append([observed_id, observing_id]+coord)
+			points_dict[(observing_id, observed_id)] = coord
+	return points_dict
 
 def getFloatNumberFromReadLines(f_handle, no_params):
 	f_content = f_handle.readlines()
@@ -471,6 +502,7 @@ class MapScan(ICPScan):
 	def __init__(self, dir_prefix, use_accumulated = False):
 		super(MapScan, self).__init__(dir_prefix, use_accumulated = use_accumulated)
 		self.vertices = []
+		self.edges = {}
 
 	def createVertexStringFromPoses(self, include_zero_vertex = True, start_index = 1, use_original = False, use_original_index = False):
 		if include_zero_vertex:
@@ -504,6 +536,16 @@ class MapScan(ICPScan):
 				self.last_str_vertex = self.last_str_vertex + createToroVertexString(n+start_index, self.vertices[n][1], self.vertices[n][2], self.vertices[n][3])
 		return self.last_str_vertex
 
+
+	def createEdgeStringFromEdges(self):
+		self.last_str_edge = ''
+		for key, value in collections.OrderedDict(sorted(self.edges.items())).iteritems():
+			self.last_str_edge = self.last_str_edge + createToroEdgeString(key[1], key[0], value[0], value[1], value[2], value[3], value[4], value[5], value[6], value[7], value[8])
+			# if key[1] == 656 and key[0] == 655:
+				# print value
+				# print createToroEdgeString(key[1], key[0], value[0], value[1], value[2], value[3], value[4], value[5], value[6], value[7], value[8])
+		return self.last_str_edge
+
 	def getAllOriginalPoses(self):
 		poses_orig_result = []
 		for n in range(0,len(self.poses)):
@@ -513,29 +555,52 @@ class MapScan(ICPScan):
 				poses_orig_result.append(tp)
 		return poses_orig_result
 
-	def loadGraphVertices(self, use_original = False, remove_zero_vertex = True, use_processed_map = False):
+	def loadGraphVertices(self, use_original = False, remove_zero_vertex = True, use_processed_map = False, add_to_current = False, reverse_processed_map = False):
 		if self.use_accumulated and not use_original:
 			if use_processed_map:
-				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses-treeopt-final.graph'), 'r'), processed = True)
+				vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses-treeopt-final.graph'), 'r'), processed = reverse_processed_map)
 			else:
-				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r'))
+				vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r'))
 		else:
 			if use_processed_map:
-				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses-treeopt-final.graph'), 'r'), processed = True)
+				vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses-treeopt-final.graph'), 'r'), processed = reverse_processed_map)
 			else:
-				self.vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r'))
+				vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r'))
 		if remove_zero_vertex:
-			index_zero = [int(x[0]) for x in self.vertices].index(0)
-			del self.vertices[index_zero]
+			index_zero = [int(x[0]) for x in vertices].index(0)
+			del vertices[index_zero]
+		if add_to_current:
+			self.vertices = self.vertices + vertices
+		else:
+			self.vertices = vertices
 		return self.vertices
+
+	def loadGraphEdges(self, use_original = False,  use_processed_map = False, add_to_current = False, reverse_processed_map = False, override_covariances = False):
+		if self.use_accumulated and not use_original:
+			if use_processed_map:
+				edges = getEdgeFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses-treeopt-final.graph'), 'r'), processed = reverse_processed_map, override_covariances = override_covariances)
+			else:
+				edges = getEdgeFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r'), override_covariances = override_covariances)
+		else:
+			if use_processed_map:
+				edges = getEdgeFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses-treeopt-final.graph'), 'r'), processed = reverse_processed_map, override_covariances = override_covariances)
+			else:
+				edges = getEdgeFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r'), override_covariances = override_covariances)
+		if add_to_current:
+			self.edges.update(edges)
+		else:
+			self.edges = edges
+		return self.edges
 
 	def saveGraphVertices(self, use_original = False):
 		if self.use_accumulated and not use_original:
 			vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r'))
 			fh_str = open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r').readlines()
 			del fh_str[0:len(vertices)]
-			fh_str = fh_str + self.last_str_vertex.splitlines()
-			open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'w').writelines(fh_str)
+			# fh_str = fh_str + self.last_str_vertex.splitlines()
+			# open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'w').writelines(fh_str)
+			fh_str = self.last_str_vertex + "".join(fh_str)
+			open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'w').write(fh_str)
 
 		else:
 			vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r'))
@@ -545,6 +610,22 @@ class MapScan(ICPScan):
 			# print fh_str
 			open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'w').write(fh_str)
 		# return self.vertices
+
+	def saveGraphEdges(self, use_original = False):
+		if self.use_accumulated and not use_original:
+			vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r'))
+			fh_str = open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'r').readlines()
+			del fh_str[len(vertices):]
+			# fh_str = fh_str + self.last_str_vertex.splitlines()
+			# open(os.path.join(self.dir_prefix,'icp_lm_poses.graph'), 'w').writelines(fh_str)
+			fh_str = "".join(fh_str) + self.last_str_edge 
+			open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'w').write(fh_str)
+		else:
+			vertices = getVertexFromGraphAutoCount(open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r'))
+			fh_str = open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'r').readlines()
+			del fh_str[len(vertices):]
+			fh_str = "".join(fh_str) + self.last_str_edge 
+			open(os.path.join(self.dir_prefix,'icp_poses.graph'), 'w').write(fh_str)
 
 	def appendVerticesWithSetPoses(self, poses, start_id = 1, include_zero_vertex = False, use_original_index = False, reject_duplicate = True):
 		if use_original_index:
@@ -559,17 +640,81 @@ class MapScan(ICPScan):
 			_ids = [x[0] for x in self.vertices]
 			for pose in poses:
 				if not use_original_index:
-					if not index_pose  in _ids:
+					if not index_pose + start_id  in _ids:
 						self.vertices.append([index_pose + start_id ,pose[0] ,pose[1] ,pose[2]])
 				else:
 					if not int(pose[-1]) in _ids:
 						self.vertices.append([int(pose[-1]), pose[0], pose[1], pose[2]])
+				index_pose = index_pose + 1
 		else:
 			for pose in poses:
 				if not use_original_index:
 					self.vertices.append([index_pose + start_id ,pose[0] ,pose[1] ,pose[2]])
 				else:
 					self.vertices,append([int(pose[-1]), pose[0], pose[1], pose[2]])
-			index_pose = index_pose + 1
+				index_pose = index_pose + 1
 		return self.vertices
+
+	def getRelativePoseBetweenVertices(self,no1,no2):
+		no1_pose = self.vertices[no1]
+		no2_pose = self.vertices[no2]
+		x = no2_pose[1] - no1_pose[1]
+		y = no2_pose[2] - no1_pose[2]
+		yaw = no2_pose[3] - no1_pose[3]
+		return [x,y,yaw], no1_pose[0], no2_pose[0]
+
+	def transformVectorToVerticeCoord(self,no, pose_x, pose_y):
+		pose_ver = self.vertices[no]
+		x = math.cos( -pose_ver[3] ) * pose_x - math.sin( -pose_ver[3] ) * pose_y
+		y = math.sin( -pose_ver[3] ) * pose_x + math.cos( -pose_ver[3] ) * pose_y
+		return x, y
+
+	def appendEdgesWithVertices(self, overwrite_duplicate = True, use_information_matrix = False):
+		index_vertex = 1
+		new_edges = {}
+		for vertex in self.vertices[1:]:
+			rel_pose, observing_id, observed_id = self.getRelativePoseBetweenVertices(index_vertex-1, index_vertex)
+			x_t , y_t = self.transformVectorToVerticeCoord(index_vertex - 1, rel_pose[0], rel_pose[1])
+			rel_pose[0] = x_t
+			rel_pose[1] = y_t
+			new_edges[(observing_id, observed_id)] = rel_pose + [1.,0.,1.,1.,0.,0.]
+			# new_edges[(observing_id, observed_id)] = [ x_t, y_t , rel_pose[2]] + [1.,0.,1.,1.,0.,0.]
+			if overwrite_duplicate:
+				self.edges[(observing_id, observed_id)] = rel_pose + [1.,0.,1.,1.,0.,0.]
+			else:
+				if not (observing_id, observed_id) in self.edges:
+					self.edges[(observing_id, observed_id)] = rel_pose + [1.,0.,1.,1.,0.,0.]
+				# else:
+					# print "duplicate detected...", (observed_id, observed_id)
+			index_vertex = index_vertex + 1
+		return new_edges
+
+	def getIndexFromVertexId (self, vid):
+		vertices_indices = [v[0] for v in self.vertices]
+		return vertices_indices.index(vid)
+
+	def getVertexFromVertexId (self, vid):
+		return self.vertices[self.getIndexFromVertexId(vid)]
+
+	def manuallyAddEdge(self,  no1, no2, overwrite_duplicate = True, use_information_matrix = False, override_information=None):
+		vertices_indices = [v[0] for v in self.vertices]
+		index_no1 = vertices_indices.index(no1)
+		index_no2 = vertices_indices.index(no2)
+		print index_no1, index_no2, self.vertices[index_no1], self.vertices[index_no2]
+		rel_pose, observing_id, observed_id = self.getRelativePoseBetweenVertices(index_no1, index_no2)
+		x_t , y_t = self.transformVectorToVerticeCoord(index_no1, rel_pose[0], rel_pose[1])
+		rel_pose[0] = x_t
+		rel_pose[1] = y_t
+		print rel_pose
+		if overwrite_duplicate:
+			if override_information is not None:
+				self.edges[(observing_id, observed_id )] = rel_pose + [override_information,0.,override_information,override_information,0.,0.]
+			else:
+				self.edges[(observing_id, observed_id )] = rel_pose + [1.,0.,1.,1.,0.,0.]
+		else:
+			if not (observing_id, observed_id ) in self.edges:
+				if override_information is not None:
+					self.edges[(observing_id, observed_id )] = rel_pose + [override_information,0.,override_information,override_information,0.,0.]
+				else:
+					self.edges[(observing_id, observed_id )] = rel_pose + [1.,0.,1.,1.,0.,0.]
 
