@@ -31,6 +31,8 @@
 #include <math.h>
 
 #include "pointmatcher/PointMatcher.h"
+#include "pointmatcher_ros/point_cloud.h"
+#include <fstream>
 #include <cassert>
 #include <iostream>
 #include <fstream>
@@ -51,8 +53,24 @@ using namespace PointMatcherSupport;
 /** types of point and cloud to work with */
 typedef velodyne_rawdata::VPoint VPoint;
 typedef velodyne_rawdata::VPointCloud VPointCloud;
+typedef PointMatcher<float> PM;
+typedef PM::DataPoints DP;
 
 void transferPclPointCloudToXYPointsMap(VPointCloud::Ptr &input_pc,  CSimplePointsMap*  point_map);
 void transferPclPointCloudXYZToXYPointsMap(pcl::PointCloud<pcl::PointXYZ>::Ptr &input_pc,  CSimplePointsMap*  point_map);
+
+
+namespace ICPTools
+{
+  struct Pose2D
+  {
+    float x; float y; float yaw;
+  };
+  struct Point2D
+  {
+    float x; float y;
+  };
+  Point2D transformPoint2D(Point2D point, Pose2D pose);
+}
 
 #endif

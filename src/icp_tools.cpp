@@ -27,3 +27,15 @@ void transferPclPointCloudToXYPointsMap(VPointCloud::Ptr &input_pc,  CSimplePoin
 
 }
 
+namespace ICPTools
+{
+
+  Point2D transformPoint2D(Point2D point, Pose2D pose)
+  {
+    Point2D result;
+    result.x = point.x * cos(pose.yaw) - point.y * sin(pose.yaw);
+    result.y = point.x * sin(pose.yaw) + point.y * cos(pose.yaw);
+    result.x += pose.x; result.y += pose.y;
+    return result;
+  }
+}
