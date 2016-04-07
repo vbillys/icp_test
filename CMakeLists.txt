@@ -145,6 +145,7 @@ catkin_package(
 # include_directories(include)
 message(STATUS "${catkin_INCLUDE_DIRS}")
 include_directories(
+	include
 	${catkin_INCLUDE_DIRS}
 	#/home/avavav/Documents/catkin_ws_hydro/src/velodyne/velodyne_driver/include
 	#/home/avavav/Documents/catkin_ws_hydro/src/velodyne/velodyne_pointcloud/include
@@ -164,7 +165,7 @@ include_directories(
 #   src/${PROJECT_NAME}/icp_test.cpp
 # )
 
-
+add_library(icp_tools ${PROJECT_SOURCE_DIR}/src/icp_tools.cpp)
 
 link_directories(${PCL_LIBRARY_DIRS} src ${PROJECT_SOURCE_DIR}/src/toro)
 add_definitions(${PCL_DEFINITIONS})
@@ -238,6 +239,15 @@ target_link_libraries(points_saver_with_filter_node ${MRPT_LIBS} ${Boost_SYSTEM_
   ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
   ${libpointmatcher_LIBRARIES}
   libtoro.a
+  )
+
+
+add_executable(online_icp_node src/online_icp_node.cpp)
+target_link_libraries(online_icp_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  ${libpointmatcher_LIBRARIES}
+  libtoro.a
+  icp_tools
   )
 
 ## Add cmake target dependencies of the executable/library
