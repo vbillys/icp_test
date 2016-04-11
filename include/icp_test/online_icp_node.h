@@ -2,6 +2,7 @@
 #define ICP_TEST_ONLINE_ICP_NODE_H
 
 #include "icp_test/icp_tools.h"
+#include <tf/transform_broadcaster.h>
 //#include <math.h>
 
 #define SCAN_MATCHING_MAX_NO_OF_LOCAL_MAPS 10
@@ -48,6 +49,9 @@ class ScanMatchingI2R
     PM::DataPointsFilters m_g_dpf;
 
     sensor_msgs::PointCloud2ConstPtr m_cloud_msg;
+
+    tf::TransformBroadcaster m_t_br;
+    tf::Transform m_transform;
 
     void ProcessPointCloud(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
     void SetDefaultICPOptions();

@@ -103,6 +103,12 @@ void ScanMatchingI2R::publishPose()
   pose_tobe_published.pose.covariance[8] = m_icp_result[2];
   pose_tobe_published.pose.pose.orientation = tf::createQuaternionMsgFromYaw(m_yaw_icp_g);
   m_pub_pose.publish(pose_tobe_published);
+
+  m_transform.setOrigin(tf::Vector3(m_x_icp_g, m_y_icp_g, 0) );
+  tf::Quaternion quat;
+  quat.setRPY(0 ,0 ,m_yaw_icp_g);
+  m_transform.setRotation(quat);
+  m_t_br.sendTransform(tf::StampedTransform(m_transform, ros::Time::now(), "map", "ibeo"));
 }
 
 void ScanMatchingI2R::TransferScanDataToRefData()
