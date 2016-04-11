@@ -27,6 +27,23 @@ void transferPclPointCloudToXYPointsMap(VPointCloud::Ptr &input_pc,  CSimplePoin
 
 }
 
+
+void transferPointsMapToPointCloud(CSimplePointsMap*  point_map, VPointCloud::Ptr output_pc )
+{
+  std::vector<float> xs, ys;
+  point_map->getAllPoints(xs, ys);
+  int idx = 0;
+  for (std::vector<float>::iterator it = xs.begin(); it< xs.end(); it++, idx++)
+  {
+    VPoint _point;
+    _point.x  = *it; _point.y = ys[idx]; _point.z = 0;
+    output_pc->push_back(_point);
+
+  }
+
+
+}
+
 namespace ICPTools
 {
 
@@ -37,5 +54,22 @@ namespace ICPTools
     result.y = point.x * sin(pose.yaw) + point.y * cos(pose.yaw);
     result.x += pose.x; result.y += pose.y;
     return result;
+  }
+  tf::Transform calcTransformFromPose2D(Pose2D pose)
+  {
+    tf::Transform transform_var;
+    transform_var.setOrigin(tf::Vector3(pose.x, pose.y, 0) );
+    tf::Quaternion quat;
+    quat.setRPY(0 ,0 ,pose.yaw);
+    transform_var.setRotation(quat);
+    return transform_var;
+  }
+  void zeroPose2D(Pose2D & pose)
+  {
+    pose.x = 0; pose.y = 0; pose.yaw = 0;
+  }
+  float calcVectorLength(Point2D point)
+  {
+    return sqrt(point.x*point.x + point.y*point.y);
   }
 }

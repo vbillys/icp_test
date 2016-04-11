@@ -40,6 +40,8 @@
 #include "treeoptimizer2.hh"
 #include <boost/format.hpp>
 
+#include <tf/transform_broadcaster.h>
+
 using namespace mrpt;
 using namespace mrpt::utils;
 using namespace mrpt::slam;
@@ -58,6 +60,7 @@ typedef PM::DataPoints DP;
 
 void transferPclPointCloudToXYPointsMap(VPointCloud::Ptr &input_pc,  CSimplePointsMap*  point_map);
 void transferPclPointCloudXYZToXYPointsMap(pcl::PointCloud<pcl::PointXYZ>::Ptr &input_pc,  CSimplePointsMap*  point_map);
+void transferPointsMapToPointCloud(CSimplePointsMap*  point_map, VPointCloud::Ptr output_pc );
 
 
 namespace ICPTools
@@ -71,6 +74,9 @@ namespace ICPTools
     float x; float y;
   };
   Point2D transformPoint2D(Point2D point, Pose2D pose);
+  tf::Transform calcTransformFromPose2D(Pose2D pose);
+  void zeroPose2D(Pose2D & pose);
+  float calcVectorLength(Point2D point);
 }
 
 #endif

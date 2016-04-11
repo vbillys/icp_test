@@ -108,7 +108,7 @@ void ScanMatchingI2R::publishPose()
   tf::Quaternion quat;
   quat.setRPY(0 ,0 ,m_yaw_icp_g);
   m_transform.setRotation(quat);
-  m_t_br.sendTransform(tf::StampedTransform(m_transform, ros::Time::now(), "map", "ibeo"));
+  m_t_br.sendTransform(tf::StampedTransform(m_transform, ros::Time::now(), "odom", "ibeo"));
 }
 
 void ScanMatchingI2R::TransferScanDataToRefData()

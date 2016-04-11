@@ -22,7 +22,7 @@ from optparse import OptionParser
 import os, sys
 
 rospy.init_node('local_map_server_node', anonymous=False)
-g_pub_map = rospy.Publisher("global_map", PointCloud2, latch = True)
+g_pub_map = rospy.Publisher("icp_globalmap", PointCloud2, latch = True)
 
 opt_parser = OptionParser()
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
