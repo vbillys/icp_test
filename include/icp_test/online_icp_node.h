@@ -5,8 +5,8 @@
 #include <tf/transform_broadcaster.h>
 //#include <math.h>
 
-#define SCAN_MATCHING_MAX_NO_OF_LOCAL_MAPS 10
-#define SCAN_MATCHING_DISTANCE_BETWEEN_CONSECUTIVE_LOCAL_MAPS 2.5
+#define SCAN_MATCHING_MAX_NO_OF_LOCAL_MAPS 10 // 15 //10
+#define SCAN_MATCHING_DISTANCE_BETWEEN_CONSECUTIVE_LOCAL_MAPS 3.5 //4.5 //3.5 //2.5
 
 class ScanMatchingI2R
 {
