@@ -27,6 +27,9 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 import numpy as np
 
+from pyrr import Quaternion, Matrix33, Matrix44, Vector4
+import pyrr
+
 app = QtGui.QApplication([])
 w = gl.GLViewWidget()
 w.opts['distance'] = 20
@@ -224,17 +227,31 @@ def read_xyz(fh, fh_frame, fh_pose, cnt, force_2d = False):
     tranformation_matrix[2,3] = tranformation_matrix[2,3]*g_scale_factor
 
 
-    tranformation_matrix =  mirror2 * mirror * tranformation_matrix * mirror3
+    tranformation_matrix =  mirror2 * mirror * tranformation_matrix * mirror3 * mirror4
     # tranformation_matrix[0:3,0:3] = tt_tran[0:3,0:3]
 
     print tranformation_matrix
-    euler_from_trans_mat =  tf.transformations.euler_from_matrix(tranformation_matrix)
+    euler_from_trans_mat =  tf.transformations.euler_from_matrix(tranformation_matrix, axes='sxyz')
+    print euler_from_trans_mat
+    quat1 = tf.transformations.quaternion_from_matrix(tranformation_matrix)
+    print quat1
+    quat2 =  tf.transformations.quaternion_from_euler(euler_from_trans_mat[0],euler_from_trans_mat[1],euler_from_trans_mat[2], axes='sxyz')
+    print quat2
+    print Matrix44(Matrix44(tranformation_matrix).quaternion)
+    print Matrix44(pyrr.quaternion.create(x=quat1[0],y=quat1[1],z=quat1[2],w=quat1[3]))
+    transformation_matrix =  Matrix44(pyrr.quaternion.create(x=quat2[0],y=quat2[1],z=quat2[2],w=quat2[3]))
+    transformation_matrix[0,3] = tranformation_matrix[0,3]
+    transformation_matrix[1,3] = tranformation_matrix[1,3]
+    transformation_matrix[2,3] = tranformation_matrix[2,3]
+    # tranformation_matrix = transformation_matrix
+
 
     # pub_br.sendTransform((tranformation_matrix.item((0,3))*g_scale_factor, tranformation_matrix.item((2,3))*g_scale_factor, tranformation_matrix.item((1,3))*g_scale_factor), tf.transformations.quaternion_from_matrix(tt_tran), rospy.Time.now(), 'frame', "velodyne")
     # pub_br.sendTransform((tranformation_matrix.item((0,3))*g_scale_factor, tranformation_matrix.item((1,3))*g_scale_factor, tranformation_matrix.item((2,3))*g_scale_factor), tf.transformations.quaternion_from_matrix(tt_tran), rospy.Time.now(), 'frame', "velodyne")
     # pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), tf.transformations.quaternion_from_matrix(tt_tran), rospy.Time.now(), 'frame', "velodyne")
-    # pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), tf.transformations.quaternion_from_matrix(tranformation_matrix), rospy.Time.now(), 'frame', "velodyne")
-    pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), tf.transformations.quaternion_from_euler(euler_from_trans_mat[0],euler_from_trans_mat[1],euler_from_trans_mat[2]), rospy.Time.now(), 'frame', "velodyne")
+    pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), tf.transformations.quaternion_from_matrix(tranformation_matrix), rospy.Time.now(), 'frame', "velodyne")
+    # pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), tf.transformations.quaternion_from_euler(euler_from_trans_mat[0],euler_from_trans_mat[1],euler_from_trans_mat[2], axes='sxyz'), rospy.Time.now(), 'frame', "velodyne")
+    # pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), Matrix44(tranformation_matrix).quaternion, rospy.Time.now(), 'frame', "velodyne")
     pub_br.sendTransform((x_pose , y_pose, 0), tf.transformations.quaternion_from_euler(0,0,heading_rad), rospy.Time.now(), 'odom', "velodyne")
 
     odom_data = Odometry()
@@ -276,9 +293,9 @@ def read_xyz(fh, fh_frame, fh_pose, cnt, force_2d = False):
 
     # _quat = tf.transformations.quaternion_from_matrix(tt_tran)
 
-    # _quat = tf.transformations.quaternion_from_matrix(tranformation_matrix)
+    _quat = tf.transformations.quaternion_from_matrix(tranformation_matrix)
 
-    _quat = tf.transformations.quaternion_from_euler(euler_from_trans_mat[0],euler_from_trans_mat[1],euler_from_trans_mat[2])
+    # _quat = tf.transformations.quaternion_from_euler(euler_from_trans_mat[0],euler_from_trans_mat[1],euler_from_trans_mat[2])
     frame_data.pose.pose.orientation.x = _quat[0]
     frame_data.pose.pose.orientation.y = _quat[1]
     frame_data.pose.pose.orientation.z = _quat[2]
@@ -288,7 +305,7 @@ def read_xyz(fh, fh_frame, fh_pose, cnt, force_2d = False):
 
     # tranformation_matrix =  mirror2 * mirror * tranformation_matrix * mirror3
     # tranformation_matrix =  mirror2 * tranformation_matrix 
-    tranformation_matrix =   tranformation_matrix * mirror4
+    # tranformation_matrix =   tranformation_matrix * mirror4
 
     point_t = tranformation_matrix *cloud_matrix.getT()
     # print point_t
@@ -307,9 +324,9 @@ def read_xyz(fh, fh_frame, fh_pose, cnt, force_2d = False):
     # return cloud
     # print cloud_out
 
-    # return cloud_out
+    return cloud_out
     # return cloud_matrix.tolist()
-    return cloud_raw
+    # return cloud_raw
 
 def publish_xyz (filename, cnt, force_2d=False):
     fullfilename_cloud = g_data_dir + filename + '.3d'
@@ -362,12 +379,13 @@ def talker():
 	print file_string
 	counter_index = counter_index + 1
 
+	rate.sleep()
 	if not NO_ROS_PUBLISHING:
 		pcloud = PointCloud2()
 		header = Header()
 		header.stamp = rospy.Time.now()
-		# header.frame_id = 'velodyne' #'odom' #'pose' #'frame' #'velodyne'
-		header.frame_id = 'frame' #'odom' #'pose' #'frame' #'velodyne'
+		header.frame_id = 'velodyne' #'odom' #'pose' #'frame' #'velodyne'
+		# header.frame_id = 'frame' #'odom' #'pose' #'frame' #'velodyne'
 		# header.frame_id = 'odom' #'odom' #'pose' #'frame' #'velodyne'
 		pcloud = pc2.create_cloud_xyz32(header, cloud)
 		pub_cloud.publish(pcloud)
