@@ -77,8 +77,21 @@ def filter_points(msg):
     print msg.is_dense
 
 # g_data_dir = '/home/avavav/Documents/workspace/3dtk/hannover1/'
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtc1/'
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtc2/'
 # g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtc3/'
-g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtcpark2/'
+
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtcpark1/'
+
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/jtcpark2/'
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/infuse/'
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/infuse2/'
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/infuse1/'
+
+
+# g_data_dir = '/home/avavav/Documents/workspace/3dtk/connexis_set1/'
+g_data_dir = '/home/avavav/Documents/workspace/3dtk/skygarden_set1/'
+
 g_scale_factor = 0.01
 g_trans_matrix = transformation.identity_matrix()
 
@@ -133,7 +146,7 @@ def fakeReadlines(cnt):
     return idata[cnt-1]
 
 
-def read_xyz(fh, fh_frame, fh_pose, cnt):
+def read_xyz(fh, fh_frame, fh_pose, cnt, force_2d = False):
     global g_trans_matrix
     content_frame = fh_frame.readlines()
     tranformation_matrix = extractCorrPose(content_frame)
@@ -142,6 +155,56 @@ def read_xyz(fh, fh_frame, fh_pose, cnt):
     content_pose  = fh_pose.readlines()
     Rz, x_pose, y_pose, heading_rad = extract_pose(content_pose)
     # tranformation_matrix = extractCorrPose(content_frame)
+
+
+    
+
+    content = fh.readlines()
+    cloud = []
+    cloud_raw = []
+    for s in content:
+	# s_parsed = re.findall( r'\d+\.*\d*', s)
+	s_parsed = s.split(' ')
+	# s_parsed_floated = []
+	# for _f in s_parsed:
+	    # s_parsed_floated.append(float(_f)*.1)
+
+	# cloud.append(s_parsed_floated)
+
+	# point  = [float(s_parsed[2])*g_scale_factor,-float(s_parsed[0])*g_scale_factor,float(s_parsed[1])*g_scale_factor]
+	# point  = [-float(s_parsed[0])*g_scale_factor,float(s_parsed[2])*g_scale_factor,float(s_parsed[1])*g_scale_factor]
+	point  = [float(s_parsed[0]),float(s_parsed[1]),float(s_parsed[2])]
+	# point_t = Rz.dot([point[0], point[1], point[2], 0])
+	# print point_t
+	# cloud.append(point)
+	# cloud.append([point_t[0]+x_pose, point_t[1]+y_pose, point_t[2]])
+	# cloud.append([point_t[0], point_t[1], point_t[2]])
+
+	# cloud.append([point[0], point[1], point[2], 1])
+	cloud.append([point[0]*g_scale_factor, point[2]*g_scale_factor, point[1]*g_scale_factor, 1])
+	cloud_raw.append([point[0]*g_scale_factor, point[2]*g_scale_factor, point[1]*g_scale_factor])
+
+    # point_t = tranformation_matrix.dot([point[0], point[1], point[2], 0])
+    cloud_matrix = numpy.matrix(cloud)#.reshape((len(content),4))
+    # g_trans_matrix = numpy.dot(g_trans_matrix, tranformation_matrix )
+    # g_trans_matrix = numpy.dot(tranformation_matrix, g_trans_matrix )
+    # point_t = g_trans_matrix.dot(cloud_matrix.getT())
+    # point_t = tranformation_matrix.dot(cloud_matrix.getT())
+
+    mirror = numpy.matrix([[1,0,0,0],[0,1, 0,0],[0,0,-1,0],[0,0,0,1]])
+    mirror2= numpy.matrix([[1,0,0,0],[0,0,-1,0],[0,1, 0,0],[0,0,0,1]])
+    mirror3= numpy.matrix([[1,0,0,0],[0,0, 1,0],[0,-1,0,0],[0,0,0,1]])
+    mirror4= numpy.matrix([[1,0,0,0],[0,-1, 0,0],[0,0,1,0],[0,0,0,1]])
+
+    if force_2d:
+	tranformation_matrix[2,3] = 0
+	al, be, ga = tf.transformations.euler_from_matrix(tt_tran, 'rxyz')
+	new_rot_mat = tf.transformations.euler_matrix(0,0,ga, 'rxyz')
+	tranformation_matrix[0:3,0:3] = new_rot_mat[0:3,0:3]
+
+    # tranformation_matrix = mirror2 * mirror * tranformation_matrix
+    # tranformation_matrix =  tranformation_matrix* mirror
+
 
     t_temptrans = tranformation_matrix
     # tt_tran = numpy.matrix(tranformation_matrix)
@@ -156,9 +219,23 @@ def read_xyz(fh, fh_frame, fh_pose, cnt):
     tt_tran [0,2] = t_temptrans.item((0,1))
     tt_tran [1,2] = t_temptrans.item((1,1))
     tt_tran [2,2] = -t_temptrans.item((2,1))
+    tranformation_matrix[0,3] = tranformation_matrix[0,3]*g_scale_factor
+    tranformation_matrix[1,3] = tranformation_matrix[1,3]*g_scale_factor
+    tranformation_matrix[2,3] = tranformation_matrix[2,3]*g_scale_factor
 
-    pub_br.sendTransform((tranformation_matrix.item((0,3))*g_scale_factor, tranformation_matrix.item((2,3))*g_scale_factor, tranformation_matrix.item((1,3))*g_scale_factor), tf.transformations.quaternion_from_matrix(tt_tran), rospy.Time.now(), 'frame', "velodyne")
-    pub_br.sendTransform((x_pose , y_pose, 0), tf.transformations.quaternion_from_euler(0,0,heading_rad), rospy.Time.now(), 'pose', "velodyne")
+
+    tranformation_matrix =  mirror2 * mirror * tranformation_matrix * mirror3
+    # tranformation_matrix[0:3,0:3] = tt_tran[0:3,0:3]
+
+    print tranformation_matrix
+    euler_from_trans_mat =  tf.transformations.euler_from_matrix(tranformation_matrix)
+
+    # pub_br.sendTransform((tranformation_matrix.item((0,3))*g_scale_factor, tranformation_matrix.item((2,3))*g_scale_factor, tranformation_matrix.item((1,3))*g_scale_factor), tf.transformations.quaternion_from_matrix(tt_tran), rospy.Time.now(), 'frame', "velodyne")
+    # pub_br.sendTransform((tranformation_matrix.item((0,3))*g_scale_factor, tranformation_matrix.item((1,3))*g_scale_factor, tranformation_matrix.item((2,3))*g_scale_factor), tf.transformations.quaternion_from_matrix(tt_tran), rospy.Time.now(), 'frame', "velodyne")
+    # pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), tf.transformations.quaternion_from_matrix(tt_tran), rospy.Time.now(), 'frame', "velodyne")
+    # pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), tf.transformations.quaternion_from_matrix(tranformation_matrix), rospy.Time.now(), 'frame', "velodyne")
+    pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), tf.transformations.quaternion_from_euler(euler_from_trans_mat[0],euler_from_trans_mat[1],euler_from_trans_mat[2]), rospy.Time.now(), 'frame', "velodyne")
+    pub_br.sendTransform((x_pose , y_pose, 0), tf.transformations.quaternion_from_euler(0,0,heading_rad), rospy.Time.now(), 'odom', "velodyne")
 
     odom_data = Odometry()
     odom_data.header.stamp = rospy.Time.now()
@@ -178,15 +255,30 @@ def read_xyz(fh, fh_frame, fh_pose, cnt):
     frame_data.header.stamp = rospy.Time.now()
     frame_data.header.frame_id = 'velodyne'
     frame_data.child_frame_id = 'frame'
-    frame_data.pose.pose.position.x = tranformation_matrix.item((0,3))*g_scale_factor
-    frame_data.pose.pose.position.y = tranformation_matrix.item((2,3))*g_scale_factor
-    frame_data.pose.pose.position.z = tranformation_matrix.item((1,3))*g_scale_factor
+    # frame_data.pose.pose.position.x = tranformation_matrix.item((0,3))*g_scale_factor
+    # frame_data.pose.pose.position.y = tranformation_matrix.item((2,3))*g_scale_factor
+    # frame_data.pose.pose.position.z = tranformation_matrix.item((1,3))*g_scale_factor
+
+
+    # frame_data.pose.pose.position.x = tranformation_matrix.item((0,3))*g_scale_factor
+    # frame_data.pose.pose.position.y = tranformation_matrix.item((1,3))*g_scale_factor
+    # frame_data.pose.pose.position.z = tranformation_matrix.item((2,3))*g_scale_factor
+
+    frame_data.pose.pose.position.x = tranformation_matrix.item((0,3))
+    frame_data.pose.pose.position.y = tranformation_matrix.item((1,3))
+    frame_data.pose.pose.position.z = tranformation_matrix.item((2,3))
+
     # frame_data.pose.pose.position.x = tranformation_matrix.item((0,2))
     # frame_data.pose.pose.position.y = tranformation_matrix.item((1,2))
     # frame_data.pose.pose.position.z = tranformation_matrix.item((2,2))
     # _quat = tf.transformations.quaternion_from_euler(0,0,heading_rad)
-    _quat = tf.transformations.quaternion_from_matrix(tt_tran)
+
+
+    # _quat = tf.transformations.quaternion_from_matrix(tt_tran)
+
     # _quat = tf.transformations.quaternion_from_matrix(tranformation_matrix)
+
+    _quat = tf.transformations.quaternion_from_euler(euler_from_trans_mat[0],euler_from_trans_mat[1],euler_from_trans_mat[2])
     frame_data.pose.pose.orientation.x = _quat[0]
     frame_data.pose.pose.orientation.y = _quat[1]
     frame_data.pose.pose.orientation.z = _quat[2]
@@ -194,42 +286,9 @@ def read_xyz(fh, fh_frame, fh_pose, cnt):
     # print frame_data
     pub_frame.publish(frame_data)
 
-    
-
-    content = fh.readlines()
-    cloud = []
-    for s in content:
-	# s_parsed = re.findall( r'\d+\.*\d*', s)
-	s_parsed = s.split(' ')
-	# s_parsed_floated = []
-	# for _f in s_parsed:
-	    # s_parsed_floated.append(float(_f)*.1)
-
-	# cloud.append(s_parsed_floated)
-
-	# point  = [float(s_parsed[2])*g_scale_factor,-float(s_parsed[0])*g_scale_factor,float(s_parsed[1])*g_scale_factor]
-	# point  = [-float(s_parsed[0])*g_scale_factor,float(s_parsed[2])*g_scale_factor,float(s_parsed[1])*g_scale_factor]
-	point  = [float(s_parsed[0]),float(s_parsed[1]),float(s_parsed[2])]
-	# point_t = Rz.dot([point[0], point[1], point[2], 0])
-	# print point_t
-	# cloud.append(point)
-	# cloud.append([point_t[0]+x_pose, point_t[1]+y_pose, point_t[2]])
-	# cloud.append([point_t[0], point_t[1], point_t[2]])
-	cloud.append([point[0], point[1], point[2], 1])
-
-    # point_t = tranformation_matrix.dot([point[0], point[1], point[2], 0])
-    cloud_matrix = numpy.matrix(cloud)#.reshape((len(content),4))
-    # print cloud_matrix
-
-    # g_trans_matrix = numpy.dot(g_trans_matrix, tranformation_matrix )
-    # g_trans_matrix = numpy.dot(tranformation_matrix, g_trans_matrix )
-    # point_t = g_trans_matrix.dot(cloud_matrix.getT())
-    # point_t = tranformation_matrix.dot(cloud_matrix.getT())
-
-    mirror = numpy.matrix([[1,0,0,0],[0,1,0,0],[0,0,-1,0],[0,0,0,1]])
-    tranformation_matrix = mirror * tranformation_matrix
-    # tranformation_matrix =  tranformation_matrix* mirror
-    print tranformation_matrix
+    # tranformation_matrix =  mirror2 * mirror * tranformation_matrix * mirror3
+    # tranformation_matrix =  mirror2 * tranformation_matrix 
+    tranformation_matrix =   tranformation_matrix * mirror4
 
     point_t = tranformation_matrix *cloud_matrix.getT()
     # print point_t
@@ -238,25 +297,28 @@ def read_xyz(fh, fh_frame, fh_pose, cnt):
 
     cloud_out = []
     for row in point_t:
-	cloud_out.append([row[0]*g_scale_factor, -row[2]*g_scale_factor, row[1]*g_scale_factor])
-	# cloud_out.append([row[0], row[2], row[1]])
+	# cloud_out.append([row[0]*g_scale_factor, -row[2]*g_scale_factor, row[1]*g_scale_factor])
+	# cloud_out.append([row[0]*g_scale_factor, row[1]*g_scale_factor, row[2]*g_scale_factor])
+	cloud_out.append([row[0], row[1], row[2]])
 
 	# print s, s_parsed, s_parsed_floated
 
     # return s_parsed_floated
     # return cloud
     # print cloud_out
-    return cloud_out
 
+    # return cloud_out
+    # return cloud_matrix.tolist()
+    return cloud_raw
 
-def publish_xyz (filename, cnt):
+def publish_xyz (filename, cnt, force_2d=False):
     fullfilename_cloud = g_data_dir + filename + '.3d'
     fullfilename_pose  = g_data_dir + filename + '.pose'
     fullfilename_frame = g_data_dir + filename + '.frames'
     fh = open(fullfilename_cloud, 'r')
     fh_pose  = open(fullfilename_pose, 'r')
     fh_frame = open(fullfilename_frame, 'r')
-    cloud = read_xyz(fh, fh_frame, fh_pose, cnt)
+    cloud = read_xyz(fh, fh_frame, fh_pose, cnt, force_2d = force_2d)
     # pcloud = PointCloud2()
     # header = Header()
     # header.stamp = rospy.Time.now()
@@ -265,15 +327,27 @@ def publish_xyz (filename, cnt):
     # pcloud = pc2.create_cloud_xyz32(header, cloud)
     # pub_cloud.publish(pcloud)
     # print pcloud
-
+    # print cloud
     return cloud
 
+def saveCloud(filename, cloud):
+	fh = open(filename, 'w')
+	for (x,y,z) in cloud:
+		str_ = format(x, '.3f')    + ' ' + format(y, '.3f')     + ' ' + format(z, '.3f')     + '\n'
+		fh.write(str_)
+	fh.close()
 
 
+
+NO_LAST_FRAME = 136 #62#100#101#43
+NO_START_FRAME = 1#61#43
+NO_ROS_PUBLISHING = False #True
+RATE_ROS_PUBLISHING = 3
+FORCE_2D = False #True
 def talker():
 
-    rate = rospy.Rate(3)
-    counter_index = 21#30#x1
+    rate = rospy.Rate(RATE_ROS_PUBLISHING)
+    counter_index = NO_START_FRAME #1#21#30#x1
     pcloud = PointCloud2()
     header = Header()
     header.stamp = rospy.Time.now()
@@ -282,22 +356,28 @@ def talker():
     while not rospy.is_shutdown():
 
 	file_string = 'scan'+format(counter_index,'03d')
-	cloud_new = publish_xyz (file_string, counter_index)
-	cloud = cloud + cloud_new
+	cloud_new = publish_xyz (file_string, counter_index, force_2d = FORCE_2D)
+	# cloud = cloud + cloud_new
+	cloud =  cloud_new
 	print file_string
 	counter_index = counter_index + 1
 
-	pcloud = PointCloud2()
-	header = Header()
-	header.stamp = rospy.Time.now()
-	header.frame_id = 'velodyne'
-	pcloud = pc2.create_cloud_xyz32(header, cloud)
-	pub_cloud.publish(pcloud)
+	if not NO_ROS_PUBLISHING:
+		pcloud = PointCloud2()
+		header = Header()
+		header.stamp = rospy.Time.now()
+		# header.frame_id = 'velodyne' #'odom' #'pose' #'frame' #'velodyne'
+		header.frame_id = 'frame' #'odom' #'pose' #'frame' #'velodyne'
+		# header.frame_id = 'odom' #'odom' #'pose' #'frame' #'velodyne'
+		pcloud = pc2.create_cloud_xyz32(header, cloud)
+		pub_cloud.publish(pcloud)
 
-	if counter_index > 47:#91:#65:#19 :#65: #65: # 20 :#65 :# 468:
+	if counter_index > NO_LAST_FRAME: #47:#91:#65:#19 :#65: #65: # 20 :#65 :# 468:
 	    break
 	    counter_index = 1
 	rate.sleep()
+
+    saveCloud("points.pts",cloud)
 
     # pcloud = pc2.create_cloud_xyz32(header, cloud)
     # print pcloud.header, pcloud.height, pcloud.width, pcloud.point_step, pcloud.row_step, pcloud.fields
