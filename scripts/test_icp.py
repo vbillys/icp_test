@@ -17,6 +17,7 @@ import transformation
 
 rospy.init_node('point_cloud_repub', anonymous=False)
 pub_cloud = rospy.Publisher("filtered_points", PointCloud2)
+pub_raw   = rospy.Publisher("velodyne_points", PointCloud2)
 pub_odom = rospy.Publisher("odometry", Odometry)
 pub_frame = rospy.Publisher("frame", Odometry)
 pub_br = tf.TransformBroadcaster()
@@ -324,7 +325,7 @@ def read_xyz(fh, fh_frame, fh_pose, cnt, force_2d = False):
     # return cloud
     # print cloud_out
 
-    return cloud_out
+    return cloud_out, cloud_raw
     # return cloud_matrix.tolist()
     # return cloud_raw
 
@@ -359,7 +360,7 @@ def saveCloud(filename, cloud):
 NO_LAST_FRAME = 136 #62#100#101#43
 NO_START_FRAME = 1#61#43
 NO_ROS_PUBLISHING = False #True
-RATE_ROS_PUBLISHING = 3
+RATE_ROS_PUBLISHING = .5 #6
 FORCE_2D = False #True
 def talker():
 
@@ -373,13 +374,13 @@ def talker():
     while not rospy.is_shutdown():
 
 	file_string = 'scan'+format(counter_index,'03d')
-	cloud_new = publish_xyz (file_string, counter_index, force_2d = FORCE_2D)
+	cloud_new, cloud_raw = publish_xyz (file_string, counter_index, force_2d = FORCE_2D)
 	# cloud = cloud + cloud_new
 	cloud =  cloud_new
 	print file_string
 	counter_index = counter_index + 1
 
-	rate.sleep()
+	# rate.sleep()
 	if not NO_ROS_PUBLISHING:
 		pcloud = PointCloud2()
 		header = Header()
@@ -389,6 +390,9 @@ def talker():
 		# header.frame_id = 'odom' #'odom' #'pose' #'frame' #'velodyne'
 		pcloud = pc2.create_cloud_xyz32(header, cloud)
 		pub_cloud.publish(pcloud)
+		header.frame_id = 'odom' #'odom' #'pose' #'frame' #'velodyne'
+		pcloud = pc2.create_cloud_xyz32(header, cloud_raw)
+		pub_raw.publish(pcloud)
 
 	if counter_index > NO_LAST_FRAME: #47:#91:#65:#19 :#65: #65: # 20 :#65 :# 468:
 	    break
@@ -419,7 +423,7 @@ def talker():
 	QtGui.QApplication.instance().exec_()
 
 
-rospy.Subscriber('velodyne_points', PointCloud2, filter_points)
+# rospy.Subscriber('velodyne_points', PointCloud2, filter_points)
 
 if __name__ == '__main__':
 	try:

@@ -34,7 +34,7 @@ def getCloudFromFile(filename):
 def talker():
 	header = Header()
 	header.stamp = rospy.Time.now()
-	header.frame_id = 'map'
+	header.frame_id = 'velodyne' #'map'
 	wmap = getCloudFromFile(opts.filename)
 	g_pcloud = pc2.create_cloud_xyz32(header, wmap)
 	g_pub_map.publish(g_pcloud)

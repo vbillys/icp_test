@@ -46,11 +46,13 @@
 #include <boost/format.hpp>
 
 #include <tf/transform_datatypes.h>
-
+#include <tf/transform_listener.h>
 
 #include <feature/BetaGrid.h>
 #include <feature/CurvatureDetector.h>
 #include <utils/SimpleMinMaxPeakFinder.h>
+
+#include <Eigen/Dense>
 
 /** types of point and cloud to work with */
 typedef velodyne_rawdata::VPoint VPoint;
@@ -75,6 +77,7 @@ PM::ICP icp;
 
 bool skip_window=false;
 int  ICP_method = (int) icpClassic;
+
 
 #define SCANS_SIZE 361
 
@@ -273,9 +276,15 @@ CICP					ICP;
 CPose2D g_icp_result(0.0f,0.0f,(float)DEG2RAD(0.0f));;
 double x_icp_g = 0;
 double y_icp_g = 0;
+double z_icp_g = 0;
 double yaw_icp_g = 0;
+double roll_icp_g = 0;
+double pitch_icp_g = 0;
 
-ofstream os("icp_poses.txt");
+Eigen::Matrix4f g_lpm_Tm_accum = Eigen::Matrix4f::Identity();
+
+
+//ofstream os("icp_poses.txt");
 
 
 void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
@@ -364,7 +373,7 @@ void processPointCloud (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     pub.publish(pose_tobe_published);
     //cout << icp_result[0] << " " << icp_result[1] << " " << icp_result[2] << endl;
     cout << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << endl;
-    os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
+    //os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
     cout<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << icp_result[0] <<" " <<  icp_result[1] <<" " <<  icp_result[2] <<" " <<  information_matrix(0,0) << " " << information_matrix(0,1) << " " << information_matrix(1,1) << " " << information_matrix(2,2) << " " << information_matrix(0,2) << " " << information_matrix(1,2) << " " << endl;
     //g_m1 = g_m2;
     g_m1.clear();
@@ -417,11 +426,138 @@ void processPointCloudUsingLpm(const sensor_msgs::PointCloud2ConstPtr& cloud_msg
       x_icp_g =  cos(-yaw_icp_g)*x_icp + sin(-yaw_icp_g)*y_icp + x_icp_g;
       y_icp_g = -sin(-yaw_icp_g)*x_icp + cos(-yaw_icp_g)*y_icp + y_icp_g;
       yaw_icp_g = yaw_icp_g + yaw;
-      os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << x <<" " <<  y <<" " <<  yaw <<" " <<  1.0 << " " << 0. << " " << 1.0 << " " << 1.0 << " " << 0.0 << " " << 0.0 << " " << endl;
+      //os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << x <<" " <<  y <<" " <<  yaw <<" " <<  1.0 << " " << 0. << " " << 1.0 << " " << 1.0 << " " << 0.0 << " " << 0.0 << " " << endl;
     //}
     cloud_for_lpm1 = cloud;
   }
 }
+
+tf::StampedTransform g_s_transform;
+void processPointCloudUsingLpm3d(const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
+{
+  static tf::TransformListener listener;
+  static bool _first_time = true;
+  SimplePeakFinder * peakC = new SimplePeakFinder(0.3, 0.004);
+  BetaGridGenerator *m_descriptorGeneratorB = new BetaGridGenerator(0.02, 0.5, 4, 12);
+  CurvatureDetector* m_detectorC = new CurvatureDetector(peakC, 1);
+  if (_first_time)
+  {
+    cloud_for_lpm1 = VPointCloud::Ptr( new VPointCloud());
+    pcl::fromROSMsg(*cloud_msg , *cloud_for_lpm1);
+    _first_time = false;
+
+    try{
+      listener.lookupTransform("/velodyne", "/odom",  
+	  ros::Time(0), g_s_transform);
+    }
+    catch (tf::TransformException ex){
+      ROS_ERROR("%s",ex.what());
+      ros::Duration(1.0).sleep();
+    }
+  }
+  else
+  {
+
+    // look up last odom for initial value
+    double last_odom_diff_roll, last_odom_diff_pitch, last_odom_diff_yaw;
+    double last_odom_diff_x, last_odom_diff_y, last_odom_diff_z;
+
+    tf::StampedTransform s_transform;
+    try{
+      listener.lookupTransform("/velodyne", "/odom",  
+      ros::Time(0), s_transform);
+    }
+    catch (tf::TransformException ex){
+      ROS_ERROR("%s",ex.what());
+      ros::Duration(1.0).sleep();
+    }
+
+    //cout << s_transform;
+
+    last_odom_diff_x = s_transform.getOrigin().x() - g_s_transform.getOrigin().x();
+    last_odom_diff_y = s_transform.getOrigin().y() - g_s_transform.getOrigin().y();
+
+    tf::Quaternion s_transform_quat = s_transform.getRotation();
+    tf::Quaternion g_s_transform_quat = g_s_transform.getRotation();
+    double s_transform_yaw, g_s_transform_yaw;
+    double roll, pitch, yaw;
+    tf::Matrix3x3(s_transform_quat).getRPY(roll, pitch, s_transform_yaw);
+    tf::Matrix3x3(g_s_transform_quat).getRPY(roll, pitch, g_s_transform_yaw);
+    last_odom_diff_yaw = s_transform_yaw - g_s_transform_yaw;
+    cout << "odom_diff: " << last_odom_diff_x << " " << last_odom_diff_y << " " << last_odom_diff_yaw << endl;
+
+    g_s_transform = s_transform;
+
+    VPointCloud::Ptr cloud(new VPointCloud());
+    pcl::fromROSMsg(*cloud_msg , *cloud);
+    DP data(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(*cloud_msg));
+    sensor_msgs::PointCloud2 point_cloud_total_ros;//(new PointCloud());
+    pcl::toROSMsg(*cloud_for_lpm1, point_cloud_total_ros);
+    DP ref(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(point_cloud_total_ros));
+    ros::Time tic = ros::Time::now();
+    std::cout << "called\n";
+    PM::TransformationParameters T_init(4,4);
+    T_init << cos(last_odom_diff_yaw), -sin(last_odom_diff_yaw),0,last_odom_diff_x
+             ,sin(last_odom_diff_yaw),  cos(last_odom_diff_yaw),0,last_odom_diff_y
+             ,0                      , 0                       ,1,0
+             ,0                      , 0                       ,0,1;
+    //PM::TransformationParameters T = icp(data, ref);
+    PM::TransformationParameters T = icp(data, ref, T_init);
+    ros::Time toc = ros::Time::now();
+
+    //{
+    using namespace std;
+    cout << "Final transformation:" << endl << T << endl;
+    cout << (toc -tic).toSec() * 1000 << " ms" << endl;
+    tf::Matrix3x3 Ttf(T(0,0),T(0,1),T(0,2),T(1,0),T(1,1),T(1,2),T(2,0),T(2,1),T(2,2));
+    //double roll,pitch,yaw;
+    Ttf.getRPY(roll,pitch,yaw);
+    cout << " " << roll <<" " <<  pitch <<" " <<  yaw << endl;
+    float x = T(0,3); float y = T(1,3);
+    float z = T(2,3);
+
+    Eigen::Matrix4f eT;
+    eT << T(0,0),T(0,1),T(0,2),T(0,3),T(1,0),T(1,1),T(1,2),T(1,3),T(2,0),T(2,1),T(2,2),T(2,3),T(3,0), T(3,1), T(3,2), T(3,3);
+    //g_lpm_Tm_accum = eT * g_lpm_Tm_accum;
+    g_lpm_Tm_accum =  g_lpm_Tm_accum * eT;
+
+    cout << g_lpm_Tm_accum << endl;
+
+    tf::Vector3 origin;
+    origin.setValue(g_lpm_Tm_accum(0,3), g_lpm_Tm_accum(1,3), g_lpm_Tm_accum(2,3));
+
+    tf::Matrix3x3 tf3d;
+    tf3d.setValue(g_lpm_Tm_accum(0,0), g_lpm_Tm_accum(0,1), g_lpm_Tm_accum(0,2), g_lpm_Tm_accum(1,0), g_lpm_Tm_accum(1,1), g_lpm_Tm_accum(1,2), g_lpm_Tm_accum(2,0), g_lpm_Tm_accum(2,1), g_lpm_Tm_accum(2,2));
+    tf::Quaternion tfqt;
+    tf3d.getRotation(tfqt);
+
+    tf::Transform transform;
+    transform.setOrigin(origin);
+    transform.setRotation(tfqt);
+
+    static tf::TransformBroadcaster br;
+    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "velodyne", "lpm"));
+
+    //double x_icp =  cos(-yaw)*x + sin(-yaw)*y ;
+    //double y_icp = -sin(-yaw)*x + cos(-yaw)*y ;
+    //x_icp_g =  cos(-yaw_icp_g)*x_icp + sin(-yaw_icp_g)*y_icp + x_icp_g;
+    //y_icp_g = -sin(-yaw_icp_g)*x_icp + cos(-yaw_icp_g)*y_icp + y_icp_g;
+    //yaw_icp_g = yaw_icp_g + yaw;
+
+    geometry_msgs::PoseWithCovarianceStamped pose_tobe_published;
+    //pose_tobe_published.pose.pose.position.x = x_icp_g;
+    //pose_tobe_published.pose.pose.position.y = y_icp_g;
+    //pose_tobe_published.pose.pose.position.z = z_icp_g;
+
+
+
+    //os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << x <<" " <<  y <<" " <<  yaw <<" " <<  1.0 << " " << 0. << " " << 1.0 << " " << 1.0 << " " << 0.0 << " " << 0.0 << " " << endl;
+    //}
+    cloud_for_lpm1 = cloud;
+  }
+}
+
+
 
 
 
@@ -512,11 +648,15 @@ int main(int argc, char **argv)
   //ros::Subscriber sub = nh.subscribe ("velodyne_packets", 1 , cloud_cb);
   //ros::Subscriber sub = nh.subscribe ("ibeo_points", 1 , processPointCloud);
   //ros::Subscriber sub = nh.subscribe ("ibeo_points_filtered", 1 , processPointCloud);
-  ros::Subscriber sub = nh.subscribe ("velodyne_points", 1 , processPointCloudUsingLpm);
+
+  //ros::Subscriber sub = nh.subscribe ("velodyne_points", 1 , processPointCloudUsingLpm);
+  ros::Subscriber sub = nh.subscribe ("velodyne_points", 1 , processPointCloudUsingLpm3d);
+
   //ros::Subscriber sub = nh.subscribe ("ibeo_points", 1 , processPointCloudUsingLpm);
   //ros::Subscriber sub = nh.subscribe ("ibeo_points_filtered", 1 , processPointCloudUsingLpm);
 
-  pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>( "mrpt_pose2d", 1);
+  //pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>( "mrpt_pose2d", 1);
+  pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>( "lpm_pose3d", 1);
 
   //ros::ServiceServer service = nh.advertiseService("processICP", processICPService);
 
