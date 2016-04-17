@@ -26,6 +26,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <icp_test/processICP.h>
 #include <tf/transform_broadcaster.h>
 
@@ -58,7 +59,7 @@
 typedef velodyne_rawdata::VPoint VPoint;
 typedef velodyne_rawdata::VPointCloud VPointCloud;
 
-ros::Publisher  pub;
+ros::Publisher  pub, pub_odom;
 
 using namespace mrpt;
 using namespace mrpt::utils;
@@ -508,7 +509,10 @@ void processPointCloudUsingLpm3d(const sensor_msgs::PointCloud2ConstPtr& cloud_m
     //{
     using namespace std;
     cout << "Final transformation:" << endl << T << endl;
-    cout << (toc -tic).toSec() * 1000 << " ms" << endl;
+    static float worst_timing = 0;
+    float timing = (toc -tic).toSec() * 1000;
+    if (timing > worst_timing) worst_timing = timing;
+    cout << timing << " ms. worst: "  << worst_timing << " ms" << endl;
     tf::Matrix3x3 Ttf(T(0,0),T(0,1),T(0,2),T(1,0),T(1,1),T(1,2),T(2,0),T(2,1),T(2,2));
     //double roll,pitch,yaw;
     Ttf.getRPY(roll,pitch,yaw);
@@ -544,12 +548,24 @@ void processPointCloudUsingLpm3d(const sensor_msgs::PointCloud2ConstPtr& cloud_m
     //y_icp_g = -sin(-yaw_icp_g)*x_icp + cos(-yaw_icp_g)*y_icp + y_icp_g;
     //yaw_icp_g = yaw_icp_g + yaw;
 
-    geometry_msgs::PoseWithCovarianceStamped pose_tobe_published;
+    //geometry_msgs::PoseWithCovarianceStamped pose_tobe_published;
     //pose_tobe_published.pose.pose.position.x = x_icp_g;
     //pose_tobe_published.pose.pose.position.y = y_icp_g;
     //pose_tobe_published.pose.pose.position.z = z_icp_g;
 
+    nav_msgs::Odometry lpm_odom;
+    lpm_odom.header.frame_id= "velodyne";
+    lpm_odom.child_frame_id = "lpm";
+    lpm_odom.header.stamp = ros::Time::now();
+    geometry_msgs::Pose lpm_odom_pose;
+    tf::poseTFToMsg(transform, lpm_odom_pose);
+    lpm_odom.pose.pose = lpm_odom_pose;
+    //lpm_odom.pose.pose.position.x = g_lpm_Tm_accum(0,3);
+    //lpm_odom.pose.pose.position.y = g_lpm_Tm_accum(1,3);
+    //lpm_odom.pose.pose.position.z = g_lpm_Tm_accum(2,3);
+    //lpm_odom.pose.pose.orientation.x = tfqt(0);
 
+    pub_odom.publish(lpm_odom);
 
     //os<< fixed << setprecision(4) << x_icp_g << " " << y_icp_g << " " << yaw_icp_g << " " << x <<" " <<  y <<" " <<  yaw <<" " <<  1.0 << " " << 0. << " " << 1.0 << " " << 1.0 << " " << 0.0 << " " << 0.0 << " " << endl;
     //}
@@ -657,6 +673,7 @@ int main(int argc, char **argv)
 
   //pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>( "mrpt_pose2d", 1);
   pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>( "lpm_pose3d", 1);
+  pub_odom = nh.advertise<nav_msgs::Odometry>( "lpm_odometry", 1);
 
   //ros::ServiceServer service = nh.advertiseService("processICP", processICPService);
 
@@ -674,8 +691,8 @@ int main(int argc, char **argv)
   //icp.setDefault();
   ifstream ifs("icp-config.yaml");
   if (!ifs.good()) {std::cout << "can't load icp config file...exiting\n"; return 1;}
-  //icp.loadFromYaml(ifs);
-  icp.setDefault();
+  icp.loadFromYaml(ifs);
+  //icp.setDefault();
 
   while (ros::ok()){ros::spinOnce();r.sleep();}//ROS_INFO_STREAM("Hello, world!");r.sleep();}
   return 0;
