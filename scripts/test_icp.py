@@ -254,6 +254,7 @@ def read_xyz(fh, fh_frame, fh_pose, cnt, force_2d = False):
     # pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), tf.transformations.quaternion_from_euler(euler_from_trans_mat[0],euler_from_trans_mat[1],euler_from_trans_mat[2], axes='sxyz'), rospy.Time.now(), 'frame', "velodyne")
     # pub_br.sendTransform((tranformation_matrix.item((0,3)), tranformation_matrix.item((1,3)), tranformation_matrix.item((2,3))), Matrix44(tranformation_matrix).quaternion, rospy.Time.now(), 'frame', "velodyne")
     pub_br.sendTransform((x_pose , y_pose, 0), tf.transformations.quaternion_from_euler(0,0,heading_rad), rospy.Time.now(), 'odom', "velodyne")
+    pub_br.sendTransform((x_pose , y_pose, 0), tf.transformations.quaternion_from_euler(0,0,heading_rad), rospy.Time.now(), 'odom_lpm', "lpm_correction")
 
     odom_data = Odometry()
     odom_data.header.stamp = rospy.Time.now()
@@ -360,7 +361,7 @@ def saveCloud(filename, cloud):
 NO_LAST_FRAME = 136 #62#100#101#43
 NO_START_FRAME = 1#61#43
 NO_ROS_PUBLISHING = False #True
-RATE_ROS_PUBLISHING = .5 #6
+RATE_ROS_PUBLISHING = 1 #1.5 #6
 FORCE_2D = False #True
 def talker():
 

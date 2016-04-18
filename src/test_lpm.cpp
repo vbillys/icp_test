@@ -48,6 +48,7 @@
 
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
+#include "tf_conversions/tf_eigen.h"
 
 #include <feature/BetaGrid.h>
 #include <feature/CurvatureDetector.h>
@@ -487,7 +488,6 @@ void processPointCloudUsingLpm3d(const sensor_msgs::PointCloud2ConstPtr& cloud_m
     last_odom_diff_yaw = s_transform_yaw - g_s_transform_yaw;
     cout << "odom_diff: " << last_odom_diff_x << " " << last_odom_diff_y << " " << last_odom_diff_yaw << endl;
 
-    g_s_transform = s_transform;
 
     VPointCloud::Ptr cloud(new VPointCloud());
     pcl::fromROSMsg(*cloud_msg , *cloud);
@@ -541,6 +541,43 @@ void processPointCloudUsingLpm3d(const sensor_msgs::PointCloud2ConstPtr& cloud_m
 
     static tf::TransformBroadcaster br;
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "velodyne", "lpm"));
+
+    g_s_transform = s_transform;
+    // translation part only from lpm
+    tf::Vector3 atra;
+    Eigen::Affine3f eigen_lpm_accum_transform(g_lpm_Tm_accum);
+    tf::vectorEigenToTF(eigen_lpm_accum_transform.translation().cast<double>(), atra);
+    //tf::Vector3 lpm_translate_correct(origin - g_s_transform.getOrigin());
+    //origin = atra - g_s_transform.getOrigin();
+
+    // rotation part only from lpm
+    //Eigen::Quaternionf quat_eig(Eigen::Affine3f(eT).rotation());
+    Eigen::Matrix3d odom_accum_rot_eigen;
+    tf::matrixTFToEigen(g_s_transform.getBasis(), odom_accum_rot_eigen);
+    //Eigen::Quaternionf quat_eig(odom_accum_rot_eigen.inverse().cast<float>() * Eigen::Affine3f(eigen_lpm_accum_transform).rotation());
+    Eigen::Quaternionf quat_eig( Eigen::Affine3f(eigen_lpm_accum_transform).rotation()*odom_accum_rot_eigen.inverse().cast<float>()  );
+    tf::quaternionEigenToTF(quat_eig.cast<double>(), tfqt);
+
+    // get rotation correction 
+
+    // rotation part side effects from accumulation
+    //tf::Vector3 etra(atra);
+    tf::Vector3 stra;
+    Eigen::Vector3d aT;
+    tf::vectorTFToEigen(g_s_transform.getOrigin(), aT);
+    //tf::vectorEigenToTF(Eigen::Vector3f(Eigen::Affine3f(eigen_lpm_accum_transform).rotation() * aT).cast<double>(),stra);
+    //tf::vectorEigenToTF(odom_accum_rot_eigen.inverse()* Eigen::Affine3f(eigen_lpm_accum_transform).rotation().cast<double>()* aT,stra);
+    tf::vectorEigenToTF(Eigen::Affine3f(eigen_lpm_accum_transform).rotation().cast<double>() * odom_accum_rot_eigen.inverse() * aT,stra);
+    //origin += atra - stra;
+    //origin += - stra;
+    origin   = atra - stra;
+
+    tf::Transform lpm_correct_transform;
+    lpm_correct_transform.setOrigin(origin);
+    tf::Quaternion no_rot_quat(tf::Quaternion::getIdentity());
+    lpm_correct_transform.setRotation(tfqt);
+    //lpm_correct_transform.setRotation(no_rot_quat);
+    br.sendTransform(tf::StampedTransform(lpm_correct_transform, ros::Time::now(), "velodyne", "lpm_correction"));
 
     //double x_icp =  cos(-yaw)*x + sin(-yaw)*y ;
     //double y_icp = -sin(-yaw)*x + cos(-yaw)*y ;
@@ -691,8 +728,8 @@ int main(int argc, char **argv)
   //icp.setDefault();
   ifstream ifs("icp-config.yaml");
   if (!ifs.good()) {std::cout << "can't load icp config file...exiting\n"; return 1;}
-  icp.loadFromYaml(ifs);
-  //icp.setDefault();
+  //icp.loadFromYaml(ifs);
+  icp.setDefault();
 
   while (ros::ok()){ros::spinOnce();r.sleep();}//ROS_INFO_STREAM("Hello, world!");r.sleep();}
   return 0;
