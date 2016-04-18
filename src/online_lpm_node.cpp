@@ -171,11 +171,11 @@ void ScanMatching3D::publishPose3D()
   //tf::Transform lpm_correct_transform;
   m_lpm_correct_transform.setOrigin(origin);
   //m_lpm_correct_transform.setOrigin(tf::Vector3(0,0,0));
-  //tf::Quaternion no_rot_quat(tf::Quaternion::getIdentity());
+  tf::Quaternion no_rot_quat(tf::Quaternion::getIdentity());
   m_lpm_correct_transform.setRotation(tfqt);
   //m_lpm_correct_transform.setRotation(no_rot_quat);
   //br.sendTransform(tf::StampedTransform(m_lpm_correct_transform, ros::Time::now(), "velodyne", "lpm_correction"));
-  br.sendTransform(tf::StampedTransform(m_lpm_correct_transform, ros::Time::now(), m_world_frame, "lpm_correction"));
+  br.sendTransform(tf::StampedTransform(m_lpm_correct_transform, ros::Time::now()+ros::Duration(m_c_worst_time_between_loams) , m_world_frame, "lpm_correction"));
 
   nav_msgs::Odometry lpm_odom;
   lpm_odom.header.frame_id= m_world_frame; //"velodyne";
