@@ -113,7 +113,7 @@ void SecondICP::ProposeNewVehicleLocation()
   //m_predicted_pose.y   = uncorrected_odom.y+m_repose.y;
   //m_predicted_pose.yaw = m_odom.yaw + m_repose.yaw;
 
-  ICPTools::Pose2D pose_remain = {m_odom.x - m_last_odom.x, m_odom.y - m_last_odom.y, m_odom.yaw - m_last_odom.yaw};
+  ICPTools::Pose2D pose_remain (m_odom.x - m_last_odom.x, m_odom.y - m_last_odom.y, m_odom.yaw - m_last_odom.yaw);
   m_predicted_pose.x   = m_last_odom.x   + m_repose.x   + pose_remain.x;
   m_predicted_pose.y   = m_last_odom.y   + m_repose.y   + pose_remain.y;
   m_predicted_pose.yaw = m_last_odom.yaw + m_repose.yaw + pose_remain.yaw;
@@ -178,7 +178,7 @@ void SecondICP::CropLocalCloud()
   VPointCloud::Ptr cropped_cloud(new VPointCloud());
   for (VPointCloud::iterator it = m_local_cloud->begin(); it < m_local_cloud->end(); it++)
   {
-    ICPTools::Point2D point = {it->x , it->y};
+    ICPTools::Point2D point (it->x , it->y);
     if (ICPTools::calcVectorLength(point) < m_c_localmap_crop)
     {
       //m_local_cloud->erase(it);

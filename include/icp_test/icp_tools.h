@@ -68,15 +68,20 @@ namespace ICPTools
   struct Pose2D
   {
     float x; float y; float yaw;
+    Pose2D(float ix, float iy, float iyaw){x=ix;y=iy;yaw=iyaw;}
+    Pose2D() : x(0),y(0),yaw(0){}
   };
   struct Point2D
   {
     float x; float y;
+    Point2D(float ix, float iy){x=ix;y=iy;}
+    Point2D() : x(0),y(0){}
   };
   Point2D transformPoint2D(Point2D point, Pose2D pose);
   tf::Transform calcTransformFromPose2D(Pose2D pose);
   void zeroPose2D(Pose2D & pose);
   float calcVectorLength(Point2D point);
+  float calcDistPose2D(Pose2D & pose);
 }
 
 #endif

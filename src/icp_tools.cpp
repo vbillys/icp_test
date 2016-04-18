@@ -68,6 +68,10 @@ namespace ICPTools
   {
     pose.x = 0; pose.y = 0; pose.yaw = 0;
   }
+  float calcDistPose2D(Pose2D & pose)
+  {
+    return sqrt(pose.x*pose.x + pose.y*pose.y);
+  }
   float calcVectorLength(Point2D point)
   {
     return sqrt(point.x*point.x + point.y*point.y);

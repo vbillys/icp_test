@@ -169,13 +169,13 @@ void ScanMatchingI2R::GetAllPointsFromLocalMap(vector<ICPTools::Point2D> & point
     std::vector<float> xs, ys;
     (*it).points_set.getAllPoints(xs, ys);
     LocalMap * last_map = &(m_local_maps.back());
-    ICPTools::Pose2D relative_pose = {it->global_pose.x - last_map->global_pose.x
+    ICPTools::Pose2D relative_pose (it->global_pose.x - last_map->global_pose.x
 			   ,it->global_pose.y - last_map->global_pose.y
-			   ,it->global_pose.yaw - last_map->global_pose.yaw};
+			   ,it->global_pose.yaw - last_map->global_pose.yaw);
     int i = 0;
     for (vector<float>::iterator iit = xs.begin() ; iit < xs.end() ; iit++, i++)
     {
-      ICPTools::Point2D _point2d = { *iit, ys[i] };
+      ICPTools::Point2D _point2d ( *iit, ys[i] );
       _point2d = ICPTools::transformPoint2D(_point2d, it->global_pose);
       _point2d = ICPTools::transformPoint2D(_point2d, {-last_map->global_pose.x, -last_map->global_pose.y, 0} );
       _point2d = ICPTools::transformPoint2D(_point2d, {0, 0, -last_map->global_pose.yaw} );
