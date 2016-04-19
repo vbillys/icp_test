@@ -53,6 +53,7 @@ void ScanMatching3D::ResetICPAccumulatedPoseAndClearState()
   m_travelled_dist = 0;
   m_next_capture_dist = - m_c_distance_between_local_maps;
   m_first_time = true;
+  m_odom_local_to_32 = none;
   m_m1.clear();
   m_m2.clear();
 }
@@ -82,6 +83,45 @@ void ScanMatching3D::DoICP3D(ICPTools::Pose2D & init)
   m_g_lpm_Tm_accum =  m_g_lpm_Tm_accum * m_T_lpm;
 }
 
+void ScanMatching3D::DoICP3DWithLocalMap(ICPTools::Pose2D & init)
+{
+  ros::Time tic = ros::Time::now();
+
+  DP data(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(*m_cloud_msg));
+  DP ref;
+  //first time local map is empty
+  if (m_local_3d_maps.size() > 0)
+  {
+    VPointCloud::Ptr ref_all_points_pcl(new VPointCloud());
+    ToPclFromLocalMapRos3D( ref_all_points_pcl);
+    sensor_msgs::PointCloud2 ref_all_points_ros;//(new PointCloud());
+    pcl::toROSMsg(*ref_all_points_pcl, ref_all_points_ros);
+    //DP ref(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(point_cloud_total_ros));
+    ref = DP(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(ref_all_points_ros));
+  }
+  else
+  {
+    //DP ref(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(*m_m1_3d));
+    ref = DP(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(*m_m1_3d));
+  }
+  PM::TransformationParameters T_init(4,4);
+  T_init << cos(init.yaw), -sin(init.yaw),0,init.x
+    ,sin(init.yaw),  cos(init.yaw),0,init.y
+    ,0                      , 0                       ,1,0
+    ,0                      , 0                       ,0,1;
+  //PM::TransformationParameters T = icp(data, ref);
+  m_T_lpm = m_icp_3d(data, ref, T_init);
+
+  ros::Time toc = ros::Time::now();
+  float timing = (toc -tic).toSec() * 1000;
+  if (timing > m_worst_timing) m_worst_timing = timing;
+  using namespace std;
+  cout << "Final transformation:" << endl << m_T_lpm << endl;
+  cout << timing << " ms. worst: "  << m_worst_timing << " ms" << endl;
+  //Eigen::Matrix4f eT(m_T_lpm);
+  //m_g_lpm_Tm_accum =  m_g_lpm_Tm_accum * eT;
+  m_g_lpm_Tm_accum =  m_g_lpm_Tm_accum * m_T_lpm;
+}
 
 void ScanMatching3D::DoICP()
 {
@@ -175,7 +215,7 @@ void ScanMatching3D::publishPose3D()
   m_lpm_correct_transform.setRotation(tfqt);
   //m_lpm_correct_transform.setRotation(no_rot_quat);
   //br.sendTransform(tf::StampedTransform(m_lpm_correct_transform, ros::Time::now(), "velodyne", "lpm_correction"));
-  br.sendTransform(tf::StampedTransform(m_lpm_correct_transform, ros::Time::now()+ros::Duration(m_c_worst_time_between_loams) , m_world_frame, "lpm_correction"));
+  br.sendTransform(tf::StampedTransform(m_lpm_correct_transform, ros::Time::now()+ros::Duration(3*m_c_worst_time_between_loams) , m_world_frame, "lpm_correction"));
 
   nav_msgs::Odometry lpm_odom;
   lpm_odom.header.frame_id= m_world_frame; //"velodyne";
@@ -297,6 +337,19 @@ void ScanMatching3D::ToPclFromLocalMapFromPoints2D(vector<ICPTools::Point2D> & p
   }
 }
 
+template<typename T> void ScanMatching3D::StampPclMsgWithLpm(T & pcl_msg)
+{
+  //pcl_msg->header.stamp = pcl_conversions::toPCL(m_cloud_msg->header).stamp;
+  std_msgs::Header header;
+  header.stamp = ros::Time::now();
+  //header.frame_id = m_cloud_msg->header.frame_id;
+  //header.frame_id = "lpm";
+  header.frame_id = "world";
+  pcl_conversions::toPCL(header, pcl_msg->header);
+  //pcl_msg->header.frame_id = m_cloud_msg->header.frame_id;
+  pcl_msg->height = 1;
+}
+
 template<typename T> void ScanMatching3D::StampPclMsgWithOrigRosMsg(T & pcl_msg)
 {
   //pcl_msg->header.stamp = pcl_conversions::toPCL(m_cloud_msg->header).stamp;
@@ -306,6 +359,40 @@ template<typename T> void ScanMatching3D::StampPclMsgWithOrigRosMsg(T & pcl_msg)
   pcl_conversions::toPCL(header, pcl_msg->header);
   //pcl_msg->header.frame_id = m_cloud_msg->header.frame_id;
   pcl_msg->height = 1;
+}
+
+void ScanMatching3D::publishLocalMap3D()
+{
+  VPointCloud::Ptr all_points_pcl(new VPointCloud());
+  StampPclMsgWithLpm<VPointCloud::Ptr>(all_points_pcl);
+  ToPclFromLocalMapRos3D( all_points_pcl);
+  m_pub_localmap.publish(all_points_pcl);
+}
+
+void ScanMatching3D::ToPclFromLocalMapRos3D(VPointCloud::Ptr pcl_cloud)
+{
+  LocalMap3D * last_map = &(m_local_3d_maps.back());
+  // end is the pose where need to be transformed
+  Eigen::Affine3f  last_map_T(last_map->global_pose);
+  for (vector<LocalMap3D>::iterator it = m_local_3d_maps.begin(); it < m_local_3d_maps.end() ; it++)
+  {
+     Eigen::Affine3f current_map_T(it->global_pose);
+     // compute transform between last map to the current map being evaluated
+     //Eigen::Affine3f _T = last_map_T.inverse() * current_map_T;
+     Eigen::Affine3f _T =  current_map_T;
+     VPointCloud::Ptr current_cloud(new VPointCloud());
+     pcl::fromROSMsg(*it->points_set, *current_cloud);
+     for (VPointCloud::iterator tp = current_cloud->begin(); tp < current_cloud->end() ; tp++)
+     {
+       Eigen::Vector3f cloud_point (tp->x, tp->y, tp->z);
+       cloud_point = _T * cloud_point;
+       VPoint result_point; 
+       result_point.x = cloud_point(0);
+       result_point.y = cloud_point(1);
+       result_point.z = cloud_point(2);
+       pcl_cloud->push_back(result_point);
+     }
+  }
 }
 
 void ScanMatching3D::publishLocalMap()
@@ -353,6 +440,60 @@ void ScanMatching3D::GetTF(tf::StampedTransform & otf)
   }
 }
 
+
+void ScanMatching3D::ProcessPointCloud3D32(const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
+{
+  VPointCloud::Ptr cloud(new VPointCloud());
+  pcl::fromROSMsg(*cloud_msg , *cloud);
+  StorePointerToRosMsg(cloud_msg);
+
+  if (m_first_time)
+  {
+    GetTF(m_g_s_transform);
+    m_first_time = false;
+    m_m1_3d = cloud_msg;
+    m_last_loam_start = ros::Time::now();
+    //// using local odom maps
+    //GetTF(m_l_s_transform);
+    //PushThisCloudTo3DOdomMap();
+    //m_odom_local_to_32 = first_first;
+
+  }
+  else
+  {
+
+
+    tf::StampedTransform s_transform;
+    GetTF(s_transform);
+    ICPTools::Pose2D odom_diff = GetOdomDiff(m_g_s_transform, s_transform);
+
+    // using local odom maps
+    //tf::StampedTransform o_transform = s_transform;
+    //ICPTools::Pose2D l_odom_diff = GetOdomDiff(m_l_s_transform, o_transform);
+    //if (first_first == m_odom_local_to_32 || second_first == m_odom_local_to_32)
+    //{
+    //if (ICPTools::calcDistPose2D(l_odom_diff) > m_c_distance_between_consecutive_odom_maps )
+    //{
+    //}
+    //}
+
+
+    if (ICPTools::calcDistPose2D(odom_diff) > m_c_distance_loam_update && (ros::Time::now() - m_last_loam_start).toSec() > m_c_worst_time_between_loams )
+      //if (ICPTools::calcDistPose2D(odom_diff) > m_c_distance_loam_update && (ros::Time::now() - m_last_loam_start).toSec() > m_c_worst_time_between_loams && false == m_odom_local_to_32)
+    {
+      DoICP3D(odom_diff);
+      //DoICP3DWithLocalMap(odom_diff);
+      PushThisCloudTo3DLocalMap();
+      publishLocalMap3D();
+      m_g_s_transform = s_transform;
+      m_m1_3d = cloud_msg;
+      m_last_loam_start = ros::Time::now();
+    }
+    publishPose3D();
+  }
+
+}
+
 void ScanMatching3D::ProcessPointCloud3D(const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
 {
   VPointCloud::Ptr cloud(new VPointCloud());
@@ -365,6 +506,11 @@ void ScanMatching3D::ProcessPointCloud3D(const sensor_msgs::PointCloud2ConstPtr&
     m_first_time = false;
     m_m1_3d = cloud_msg;
     m_last_loam_start = ros::Time::now();
+    //// using local odom maps
+    //GetTF(m_l_s_transform);
+    //PushThisCloudTo3DOdomMap();
+    //m_odom_local_to_32 = first_first;
+
   }
   else
   {
@@ -374,9 +520,24 @@ void ScanMatching3D::ProcessPointCloud3D(const sensor_msgs::PointCloud2ConstPtr&
     GetTF(s_transform);
     ICPTools::Pose2D odom_diff = GetOdomDiff(m_g_s_transform, s_transform);
 
+    // using local odom maps
+    //tf::StampedTransform o_transform = s_transform;
+    //ICPTools::Pose2D l_odom_diff = GetOdomDiff(m_l_s_transform, o_transform);
+    //if (first_first == m_odom_local_to_32 || second_first == m_odom_local_to_32)
+    //{
+      //if (ICPTools::calcDistPose2D(l_odom_diff) > m_c_distance_between_consecutive_odom_maps )
+      //{
+      //}
+    //}
+
+
     if (ICPTools::calcDistPose2D(odom_diff) > m_c_distance_loam_update && (ros::Time::now() - m_last_loam_start).toSec() > m_c_worst_time_between_loams )
+    //if (ICPTools::calcDistPose2D(odom_diff) > m_c_distance_loam_update && (ros::Time::now() - m_last_loam_start).toSec() > m_c_worst_time_between_loams && false == m_odom_local_to_32)
     {
       DoICP3D(odom_diff);
+      //DoICP3DWithLocalMap(odom_diff);
+      PushThisCloudTo3DLocalMap();
+      publishLocalMap3D();
       m_g_s_transform = s_transform;
       m_m1_3d = cloud_msg;
       m_last_loam_start = ros::Time::now();
@@ -384,6 +545,23 @@ void ScanMatching3D::ProcessPointCloud3D(const sensor_msgs::PointCloud2ConstPtr&
     publishPose3D();
   }
 
+}
+
+void ScanMatching3D::PushThisCloudTo3DLocalMap()
+{
+  //static int internal_counter = 0;
+  //if (internal_counter > (int)(m_c_distance_between_local_maps/m_c_distance_loam_update) ){
+    //internal_counter = 0; 
+    LocalMap3D local_map;
+    local_map.global_pose = m_g_lpm_Tm_accum; 
+    local_map.points_set  = m_cloud_msg;
+    m_local_3d_maps.push_back(local_map);
+    if (m_local_3d_maps.size() > m_c_max_no_of_local_maps)
+    {
+      m_local_3d_maps.erase (m_local_3d_maps.begin());
+    }
+  //}
+  //internal_counter++;
 }
 
 ICPTools::Pose2D ScanMatching3D::GetOdomDiff(tf::StampedTransform &before, tf::StampedTransform &after)
