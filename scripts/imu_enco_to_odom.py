@@ -21,7 +21,7 @@ def normalizeHeading(angle_rad):
     return angle_rad
 
 class ImuEnco2Odom:
-    def __init__(self, dist_to_meter, dist_thres):
+    def __init__(self, dist_to_meter, dist_thres, odom_thres=.1):
 	rospy.init_node('imu_enco_to_odom', anonymous=False)
 	rospy.Subscriber('imu/data', Imu, self.processImuMsg)
 	rospy.Subscriber('encoder_odom', Odometry, self.processOdomMsg)
@@ -30,12 +30,14 @@ class ImuEnco2Odom:
 	self.pub_odom = rospy.Publisher("odometry", Odometry)
 	self.dist_to_meter = dist_to_meter
 	self.dist_thres_for_adding_data = dist_thres
+	self.dist_thres_for_odom = odom_thres
 	self.heading_rad = 0
 	self.x_pose = 0
 	self.y_pose = 0
 	self.dist   = 0
 	self.dist_accum   = 0
 	self.dist_accum_last = 0
+	self.dist_odom_accum_last = 0
 	self.last_odom = 0
 	self.init = False
 	self.init_velo = True
@@ -110,25 +112,28 @@ class ImuEnco2Odom:
 	    # self.dist_accum = self.dist_accum + self.dist
 	    self.dist_accum = self.dist_accum + abs(self.dist)
 	    # print self.x_pose, self.y_pose , self.dist_accum
-	    self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'odom', "world")
-	    # self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), self.velostamp, 'odom', "velodyne")
-	    # self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'world', "odom")
-	    self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'odom_corrected', "lpm_correction")
+	    # if self.dist_accum >= self.dist_odom_accum_last + self.dist_thres_for_odom:
+	    if True:
+	      self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'odom', "world")
+	      # self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), self.velostamp, 'odom', "velodyne")
+	      # self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'world', "odom")
+	      self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), 'odom_corrected', "lpm_correction")
 
 
-	    odom_data = Odometry()
-	    odom_data.header.stamp = rospy.Time.now()
-	    odom_data.header.frame_id = 'world'
-	    odom_data.child_frame_id = 'odom'
-	    odom_data.pose.pose.position.x = self.x_pose
-	    odom_data.pose.pose.position.y = self.y_pose
-	    _quat = tf.transformations.quaternion_from_euler(0,0,self.heading_rad)
-	    odom_data.pose.pose.orientation.x = _quat[0]
-	    odom_data.pose.pose.orientation.y = _quat[1]
-	    odom_data.pose.pose.orientation.z = _quat[2]
-	    odom_data.pose.pose.orientation.w = _quat[3]
-	    # print odom_data
-	    self.pub_odom.publish(odom_data)
+	      odom_data = Odometry()
+	      odom_data.header.stamp = rospy.Time.now()
+	      odom_data.header.frame_id = 'world'
+	      odom_data.child_frame_id = 'odom'
+	      odom_data.pose.pose.position.x = self.x_pose
+	      odom_data.pose.pose.position.y = self.y_pose
+	      _quat = tf.transformations.quaternion_from_euler(0,0,self.heading_rad)
+	      odom_data.pose.pose.orientation.x = _quat[0]
+	      odom_data.pose.pose.orientation.y = _quat[1]
+	      odom_data.pose.pose.orientation.z = _quat[2]
+	      odom_data.pose.pose.orientation.w = _quat[3]
+	      # print odom_data
+	      self.pub_odom.publish(odom_data)
+	      self.dist_odom_accum_last = self.dist_accum
 
 	else:
 	    self.pub_br.sendTransform((0 , 0 ,0), tf.transformations.quaternion_from_euler(0,0,0), rospy.Time.now(), 'odom', "world")
