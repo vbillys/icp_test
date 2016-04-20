@@ -266,6 +266,15 @@ target_link_libraries(online_lpm_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
   icp_tools
   )
 
+
+add_executable(online_second_lpm src/online_second_lpm.cpp)
+target_link_libraries(online_second_lpm ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  ${libpointmatcher_LIBRARIES}
+  libtoro.a
+  icp_tools
+  )
+
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(icp_test_node icp_test_generate_messages_cpp)

@@ -172,6 +172,10 @@ void ScanMatching3D::printOutStatus()
 
 void ScanMatching3D::publishPose3D()
 {
+  // get corrected lpm
+  Eigen::Matrix4f g_lpm_Tm_accum(GetTFAsEigen("lpm_global_correction") * m_g_lpm_Tm_accum);
+
+
   tf::Vector3 origin;
   origin.setValue(m_g_lpm_Tm_accum (0,3), m_g_lpm_Tm_accum (1,3), m_g_lpm_Tm_accum (2,3));
 
@@ -186,12 +190,14 @@ void ScanMatching3D::publishPose3D()
 
   static tf::TransformBroadcaster br;
   //br.sendTransform(tf::StampedTransform(m_transform, ros::Time::now(), "velodyne", "lpm"));
-  br.sendTransform(tf::StampedTransform(m_transform, ros::Time::now(), m_world_frame, "lpm"));
+  //br.sendTransform(tf::StampedTransform(m_transform, ros::Time::now(), m_world_frame, "lpm"));
+  br.sendTransform(tf::StampedTransform(m_transform, ros::Time::now(), "lpm_global_correction", "lpm"));
 
 
   // translation part only from lpm
   tf::Vector3 atra;
-  Eigen::Affine3f eigen_lpm_accum_transform(m_g_lpm_Tm_accum);
+  //Eigen::Affine3f eigen_lpm_accum_transform(m_g_lpm_Tm_accum);
+  Eigen::Affine3f eigen_lpm_accum_transform(g_lpm_Tm_accum);
   tf::vectorEigenToTF(eigen_lpm_accum_transform.translation().cast<double>(), atra);
 
   // rotation part only from lpm
@@ -216,6 +222,13 @@ void ScanMatching3D::publishPose3D()
   //m_lpm_correct_transform.setRotation(no_rot_quat);
   //br.sendTransform(tf::StampedTransform(m_lpm_correct_transform, ros::Time::now(), "velodyne", "lpm_correction"));
   br.sendTransform(tf::StampedTransform(m_lpm_correct_transform, ros::Time::now()+ros::Duration(3*m_c_worst_time_between_loams) , m_world_frame, "lpm_correction"));
+
+
+  origin.setValue(g_lpm_Tm_accum(0,3), g_lpm_Tm_accum(1,3), g_lpm_Tm_accum(2,3));
+  tf3d.setValue(g_lpm_Tm_accum (0,0), g_lpm_Tm_accum (0,1), g_lpm_Tm_accum (0,2), g_lpm_Tm_accum (1,0), g_lpm_Tm_accum (1,1), g_lpm_Tm_accum (1,2), g_lpm_Tm_accum (2,0), g_lpm_Tm_accum (2,1), g_lpm_Tm_accum (2,2));
+  tf3d.getRotation(tfqt);
+  m_transform.setOrigin(origin);
+  m_transform.setRotation(tfqt);
 
   nav_msgs::Odometry lpm_odom;
   lpm_odom.header.frame_id= m_world_frame; //"velodyne";
@@ -424,20 +437,54 @@ void ScanMatching3D::StorePointerToRosMsg(const sensor_msgs::PointCloud2ConstPtr
   m_cloud_msg = cloud_msg;
 }
 
-void ScanMatching3D::GetTF(tf::StampedTransform & otf)
+//void ScanMatching3D::GetTF(tf::StampedTransform & otf)
+//{
+  //try{
+    ////m_listener.lookupTransform("/world", "/odom",  
+	////ros::Time(0), otf);
+    ////m_listener.lookupTransform("/velodyne", "/odom",  
+	////ros::Time(0), otf);
+    //m_listener.lookupTransform(m_world_frame, "/odom",  
+	//ros::Time(0), otf);
+  //}
+  //catch (tf::TransformException ex){
+    //ROS_ERROR("%s",ex.what());
+    //ros::Duration(1.0).sleep();
+  //}
+//}
+bool ScanMatching3D::GetTF(tf::StampedTransform & otf, string name)
 {
   try{
     //m_listener.lookupTransform("/world", "/odom",  
-	//ros::Time(0), otf);
+    //ros::Time(0), otf);
     //m_listener.lookupTransform("/velodyne", "/odom",  
-	//ros::Time(0), otf);
-    m_listener.lookupTransform(m_world_frame, "/odom",  
+    //ros::Time(0), otf);
+    m_listener.lookupTransform(m_world_frame, name,  
 	ros::Time(0), otf);
   }
   catch (tf::TransformException ex){
     ROS_ERROR("%s",ex.what());
-    ros::Duration(1.0).sleep();
+    //ros::Duration(1.0).sleep();
+    return false;
   }
+  return true;
+}
+
+Eigen::Matrix4f ScanMatching3D::GetTFAsEigen(string name)
+{
+  tf::StampedTransform transfrom;
+  bool success = GetTF(transfrom, name);
+  Eigen::Affine3d eigen_transform;
+  if (success)
+  {
+    tf::transformTFToEigen (transfrom, eigen_transform);
+  }
+  else
+  {
+    // if no tf avail, set identity!
+    eigen_transform.setIdentity();
+  }
+  return eigen_transform.matrix().cast<float>();
 }
 
 
@@ -449,7 +496,7 @@ void ScanMatching3D::ProcessPointCloud3D32(const sensor_msgs::PointCloud2ConstPt
 
   if (m_first_time)
   {
-    GetTF(m_g_s_transform);
+    GetTF(m_g_s_transform, "/odom");
     m_first_time = false;
     m_m1_3d = cloud_msg;
     m_last_loam_start = ros::Time::now();
@@ -464,7 +511,7 @@ void ScanMatching3D::ProcessPointCloud3D32(const sensor_msgs::PointCloud2ConstPt
 
 
     tf::StampedTransform s_transform;
-    GetTF(s_transform);
+    GetTF(s_transform, "/odom");
     ICPTools::Pose2D odom_diff = GetOdomDiff(m_g_s_transform, s_transform);
 
     // using local odom maps
@@ -502,7 +549,7 @@ void ScanMatching3D::ProcessPointCloud3D(const sensor_msgs::PointCloud2ConstPtr&
 
   if (m_first_time)
   {
-    GetTF(m_g_s_transform);
+    GetTF(m_g_s_transform, "/odom");
     m_first_time = false;
     m_m1_3d = cloud_msg;
     m_last_loam_start = ros::Time::now();
@@ -517,7 +564,7 @@ void ScanMatching3D::ProcessPointCloud3D(const sensor_msgs::PointCloud2ConstPtr&
 
 
     tf::StampedTransform s_transform;
-    GetTF(s_transform);
+    GetTF(s_transform, "/odom");
     ICPTools::Pose2D odom_diff = GetOdomDiff(m_g_s_transform, s_transform);
 
     // using local odom maps

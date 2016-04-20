@@ -110,8 +110,11 @@ class ScanMatching3D
     void StorePointerToRosMsg(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
     template<typename T> void StampPclMsgWithOrigRosMsg(T & pcl_msg);
     template<typename T> void StampPclMsgWithLpm(T & pcl_msg);
+    Eigen::Matrix4f GetTFAsEigen(string name);
 
-    void GetTF(tf::StampedTransform & otf);
+
+    //void GetTF(tf::StampedTransform & otf);
+    bool GetTF(tf::StampedTransform & otf, string name);
     ICPTools::Pose2D GetOdomDiff(tf::StampedTransform &before, tf::StampedTransform &after);
 
     const static int m_c_max_no_of_local_maps = SCAN_MATCHING_MAX_NO_OF_LOCAL_MAPS;
