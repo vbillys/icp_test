@@ -8,6 +8,7 @@ ScanMatching3D::ScanMatching3D(string world_frame): m_g_cfg_ifs("default-convert
   //m_pub_pose = m_nh.advertise<geometry_msgs::PoseWithCovarianceStamped>( "lpm_pose3d", 10);
   m_pub_lpm_odom = m_nh.advertise<nav_msgs::Odometry>( "lpm_odometry", 10);
   m_pub_localmap = m_nh.advertise<sensor_msgs::PointCloud2>( "lpm_localmap", 2);
+  m_pub_last_lpm = m_nh.advertise<geometry_msgs::Pose>( "lpm_last_for_localmap" ,2);
   SetDefaultICPOptions();
   ResetICPAccumulatedPoseAndClearState();
   //m_g_cfg_ifs = std::ifstream("default-convert.yaml");
@@ -391,8 +392,8 @@ void ScanMatching3D::ToPclFromLocalMapRos3D(VPointCloud::Ptr pcl_cloud)
   {
      Eigen::Affine3f current_map_T(it->global_pose);
      // compute transform between last map to the current map being evaluated
-     //Eigen::Affine3f _T = last_map_T.inverse() * current_map_T;
-     Eigen::Affine3f _T =  current_map_T;
+     Eigen::Affine3f _T = last_map_T.inverse() * current_map_T;
+     //Eigen::Affine3f _T =  current_map_T;
      VPointCloud::Ptr current_cloud(new VPointCloud());
      pcl::fromROSMsg(*it->points_set, *current_cloud);
      for (VPointCloud::iterator tp = current_cloud->begin(); tp < current_cloud->end() ; tp++)
@@ -584,7 +585,11 @@ void ScanMatching3D::ProcessPointCloud3D(const sensor_msgs::PointCloud2ConstPtr&
       DoICP3D(odom_diff);
       //DoICP3DWithLocalMap(odom_diff);
       PushThisCloudTo3DLocalMap();
-      publishLocalMap3D();
+      if (m_local_3d_maps.size() > 9)
+      {
+	publishLocalMap3D();
+	PublishLocalMapPose();
+      }
       m_g_s_transform = s_transform;
       m_m1_3d = cloud_msg;
       m_last_loam_start = ros::Time::now();
@@ -592,6 +597,17 @@ void ScanMatching3D::ProcessPointCloud3D(const sensor_msgs::PointCloud2ConstPtr&
     publishPose3D();
   }
 
+}
+
+void ScanMatching3D::PublishLocalMapPose()
+{
+  Eigen::Matrix4f g_lpm_Tm_accum(GetTFAsEigen("lpm_global_correction") * m_g_lpm_Tm_accum);
+  Eigen::Affine3d eigen_affine_t(g_lpm_Tm_accum.cast<double>());
+  geometry_msgs::Pose lpm_pose;
+  tf::Pose tfpose;
+  tf::poseEigenToTF(eigen_affine_t, tfpose);
+  tf::poseTFToMsg(tfpose, lpm_pose);
+  m_pub_last_lpm.publish(lpm_pose);
 }
 
 void ScanMatching3D::PushThisCloudTo3DLocalMap()

@@ -45,6 +45,7 @@ class ScanMatching3D
     ros::Publisher m_pub_pose;
     ros::Publisher m_pub_localmap;
     ros::Publisher m_pub_lpm_odom;
+    ros::Publisher m_pub_last_lpm;
     ros::NodeHandle m_nh;
     CICP					m_ICP;
     double m_x_icp_g;
@@ -111,6 +112,7 @@ class ScanMatching3D
     template<typename T> void StampPclMsgWithOrigRosMsg(T & pcl_msg);
     template<typename T> void StampPclMsgWithLpm(T & pcl_msg);
     Eigen::Matrix4f GetTFAsEigen(string name);
+    void PublishLocalMapPose();
 
 
     //void GetTF(tf::StampedTransform & otf);
