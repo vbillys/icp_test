@@ -8,7 +8,7 @@ from tf import TransformListener
 
 
 class Bag2UosConverter:
-    def __init__(self, rootdir, scale_factor):
+    def __init__(self, rootdir, scale_factor, transform_pitch_angle):
 	rospy.init_node('bad_to_uos_convert', anonymous=False)
 	rospy.Subscriber('velotime_points', PointCloud2, self.processMsg)
 	self.counter = 0
@@ -16,7 +16,13 @@ class Bag2UosConverter:
 	self.scale_factor = scale_factor
 	self.tf = TransformListener()
 	self.init = True
+	self.transform_pitch_angle = math.radians(transform_pitch_angle)
 	pass
+    def transformPoint(self,x ,y , z):
+	yy = y
+	xx =  math.cos(self.transform_pitch_angle) * x + math.sin(self.transform_pitch_angle) * z
+	zz = -math.sin(self.transform_pitch_angle) * x + math.cos(self.transform_pitch_angle) * z
+	return xx, yy, zz
     def run(self):
 	rospy.spin()
 	pass
@@ -51,6 +57,7 @@ class Bag2UosConverter:
 	fh_data  = open(fullfilename_data, 'w')
 	for (x,y,z,intensity,ring) in cloud:
 	    # print x,y,z
+	    x, y, z = self.transformPoint(x, y, z)
 	    x = x*self.scale_factor
 	    y = y*self.scale_factor
 	    z = z*self.scale_factor
@@ -77,8 +84,16 @@ class Bag2UosConverter:
 
 # g_root_dir = '/home/avavav/Documents/workspace/3dtk/velo16/'
 # g_root_dir = '/home/avavav/Documents/workspace/3dtk/jtc3/'
-g_root_dir = '/home/avavav/Documents/workspace/3dtk/jtcpark2/'
+# g_root_dir = '/home/avavav/Documents/workspace/3dtk/jtcpark2/'
+# g_root_dir = '/home/avavav/Documents/workspace/3dtk/infuse2/'
+# g_root_dir = '/home/avavav/Documents/workspace/3dtk/infuse/'
+# g_root_dir = '/home/avavav/Documents/workspace/3dtk/infuse1/'
+# g_root_dir = '/home/avavav/Documents/workspace/3dtk/connexis_set1/'
+# g_root_dir = '/home/avavav/Documents/workspace/3dtk/skygarden_set1/'
+# g_root_dir = '/home/avavav/Documents/workspace/3dtk/pioneer_fusion_lvl9_try/'
+g_root_dir = '/home/avavav/Documents/workspace/3dtk/pioneer_fusion_lvl9_try_3/'
 g_scale_factor = 100
+g_pitch_angle = 7.5
 if __name__ == '__main__':
-    converter = Bag2UosConverter(g_root_dir, g_scale_factor)
+    converter = Bag2UosConverter(g_root_dir, g_scale_factor, g_pitch_angle)
     converter.run()
