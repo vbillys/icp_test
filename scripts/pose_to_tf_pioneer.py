@@ -63,6 +63,7 @@ class PoseToTF:
 			self.init_velo = False
 	def processOdomMsg(self, msg):
 		if self.init:
+			# print 'calculating odom'
 			x_diff = msg.pose.pose.position.x - self.last_odom_msg.pose.pose.position.x
 			y_diff = msg.pose.pose.position.y - self.last_odom_msg.pose.pose.position.y
 
@@ -76,11 +77,18 @@ class PoseToTF:
 			self.dist_accum = self.dist_accum + self.dist
 
 			self.heading_rad = euler[2] - first_euler[2]
-			self.x_pose = msg.pose.pose.position.x - self.first_odom_msg.pose.pose.position.x
-			self.y_pose = msg.pose.pose.position.y - self.first_odom_msg.pose.pose.position.y
+			# self.x_pose = msg.pose.pose.position.x - self.first_odom_msg.pose.pose.position.x
+			# self.y_pose = msg.pose.pose.position.y - self.first_odom_msg.pose.pose.position.y
+			x_pose_org = msg.pose.pose.position.x - self.first_odom_msg.pose.pose.position.x
+			y_pose_org = msg.pose.pose.position.y - self.first_odom_msg.pose.pose.position.y
+			self.x_pose = math.cos(-first_euler[2])*x_pose_org - math.sin(-first_euler[2])*y_pose_org
+			self.y_pose = math.sin(-first_euler[2])*x_pose_org + math.cos(-first_euler[2])*y_pose_org
+			# print self.x_pose, self.y_pose
+
 			self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), self.moving_odom_frame, self.map_frame)
 			pass
 		else:
+			# print 'inited'
 			self.pub_br.sendTransform((0 , 0 ,0), tf.transformations.quaternion_from_euler(0,0,0), rospy.Time.now(), self.moving_odom_frame, self.map_frame)
 			self.first_odom_msg = msg
 			pass
@@ -91,9 +99,12 @@ class PoseToTF:
 g_dist_to_meter = 1. #1./3000#1./2700 - for miev, 1./3000 for coms2
 g_dist_thres = .5#2.5#.1#1#5#2
 # g_moving_odom_frame = 'base_footprint'
-g_moving_odom_frame = 'odom'
+g_moving_odom_frame = 'base_link'
+# g_moving_odom_frame = 'laser'
+# g_moving_odom_frame = 'odom'
 # g_map_frame = 'nav'
-g_map_frame = 'world'
+# g_map_frame = 'world'
+g_map_frame = 'odom'
 # g_odometry_topic = 'odom'
 g_odometry_topic = 'RosAria/pose'
 if __name__ == '__main__':
