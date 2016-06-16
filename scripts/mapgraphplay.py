@@ -27,6 +27,7 @@ import pcl
 import numpy as np
 
 opt_parser = OptionParser()
+opt_parser.add_option('--oo','--useoriginref', dest='useoriginref',  action='store_true', default=False)
 opt_parser.add_option('-r','--rate', dest='publish_rate', type='float', default=1)
 opt_parser.add_option('-s','--startframe', dest='start_frame_no', type='int', default=1)
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
@@ -58,19 +59,26 @@ counter_index = opts.start_frame_no #1#21#30#x1
 
 
 while not rospy.is_shutdown():
-	file_string = 'scan'+format(counter_index,'05d')+'.pcd'
+	if opts.useoriginref:
+		file_string = 'scan'+format(counter_index,'05d')+'.pcd'
+	else:
+		file_string = 'scanorg'+format(counter_index,'05d')+'.pcd'
 	file_string = os.path.join(opts.dir_prefix, file_string)
 	pcl_cloud = pcl.load(file_string)
 	pcloud = PointCloud2()
 	header = Header()
 	header.stamp = rospy.Time.now()
-	header.frame_id = 'velodyne' #'odom' #'pose' #'frame' #'velodyne'
+	if opts.useoriginref:
+		header.frame_id = 'map'
+	else:
+		header.frame_id = 'velodyne' #'odom' #'pose' #'frame' #'velodyne'
 	pcloud = pc2.create_cloud_xyz32(header, pcl_cloud.to_array())
 	pose = graph[str(counter_index)][0]
 	print pose
 	odom = Odometry()
-	odom.header = header
+	odom.header = Header()
 	odom.header.frame_id = 'map'
+	odom.header.stamp = rospy.Time.now()
 	odom.child_frame_id = 'velodyne'
 	odom.pose.pose = pose
 	pub_frame.publish(pcloud)
