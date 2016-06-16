@@ -121,7 +121,10 @@ for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft
 		count_odom = count_odom + 1
 		# print msg
 		quat = (msg.pose.pose.orientation.z, -msg.pose.pose.orientation.x, -msg.pose.pose.orientation.y, msg.pose.pose.orientation.w)
-		euler = tf.transformations.euler_from_quaternion(quat)
+		# euler = tf.transformations.euler_from_quaternion(quat)
+		# hom_rot_mat_inv = tf.transformations.quaternion_matrix(quaternion_inverse(quat))
+		hom_rot_mat= tf.transformations.quaternion_matrix(quat)
+		euler = tf.transformations.euler_from_matrix(hom_rot_mat, 'sxyz')
 		print euler_to_degrees(euler)
 		# last_pose = copy.deepcopy(msg.pose.pose)
 		prev_pose = last_pose
@@ -133,6 +136,11 @@ for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft
 		last_pose.position.x = msg.pose.pose.position.z
 		last_pose.position.y = msg.pose.pose.position.x
 		last_pose.position.z = msg.pose.pose.position.y
+		hom_mat = hom_rot_mat
+		hom_mat[0,3] = last_pose.position.x
+		hom_mat[1,3] = last_pose.position.y
+		hom_mat[2,3] = last_pose.position.z
+		inv_hom_mat = np.linalg.inv(hom_mat)
 	print t, topic, count_velo, count_odom
 	if count_velo == count_odom and count_velo == count_nodes+1 and count_odom == count_nodes+1:
 		count_nodes = count_nodes + 1
@@ -141,6 +149,13 @@ for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft
 		if not graph: #Empty
 			graph[count_nodes] = [last_pose, []]
 			pcl.save(pcl_cloud, os.path.join(opts.dir_prefix, 'scan'+format(count_nodes,'05d')+'.pcd'))
+			cloud_T = np.ones((len(last_cloud_array),4))
+			cloud_T[:,:-1] = pcl_cloud
+			cloud_T=np.dot(cloud_T, inv_hom_mat.T)
+			cloud_T=cloud_T[:,:-1]
+			pcl_cloud_T = pcl.PointCloud()
+			pcl_cloud_T.from_array(np.array(cloud_T, dtype=np.float32))
+			pcl.save(pcl_cloud_T, os.path.join(opts.dir_prefix, 'scanorg'+format(count_nodes,'05d')+'.pcd'))
 			if first_flag:
 				first_flag = False
 			else:
@@ -158,6 +173,13 @@ for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft
 				exit()
 			graph[count_nodes] = [last_pose,[]]
 			pcl.save(pcl_cloud, os.path.join(opts.dir_prefix, 'scan'+format(count_nodes,'05d')+'.pcd'))
+			cloud_T = np.ones((len(last_cloud_array),4))
+			cloud_T[:,:-1] = pcl_cloud
+			cloud_T=np.dot(cloud_T, inv_hom_mat.T)
+			cloud_T=cloud_T[:,:-1]
+			pcl_cloud_T = pcl.PointCloud()
+			pcl_cloud_T.from_array(np.array(cloud_T, dtype=np.float32))
+			pcl.save(pcl_cloud_T, os.path.join(opts.dir_prefix, 'scanorg'+format(count_nodes,'05d')+'.pcd'))
 
 # print graph
 # strlog = ujson.dumps(graph, ensure_ascii=False, double_precision=4)
