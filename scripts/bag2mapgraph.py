@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 import IcpTestTools
 import ujson
+import jsonpickle
 
 import rosbag
 import rospy
@@ -34,6 +35,7 @@ opt_parser = OptionParser()
 opt_parser.add_option('-b','--bagfile', dest='bag_filename', type='string', default=None)
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
 opt_parser.add_option('-f','--contfile', dest='graph_filename', type='string', default=None)
+opt_parser.add_option('--nocloudsave', dest='nocloudsave',  action='store_true', default=False)
 opts, args = opt_parser.parse_args(sys.argv[1:])
 
 if opts.bag_filename is None: 
@@ -120,11 +122,14 @@ for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft
 	if topic=='aft_mapped_to_init':
 		count_odom = count_odom + 1
 		# print msg
-		quat = (msg.pose.pose.orientation.z, -msg.pose.pose.orientation.x, -msg.pose.pose.orientation.y, msg.pose.pose.orientation.w)
+		# quat = (msg.pose.pose.orientation.z, -msg.pose.pose.orientation.x, -msg.pose.pose.orientation.y, msg.pose.pose.orientation.w)
+		quat = (msg.pose.pose.orientation.z, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.w)
 		# euler = tf.transformations.euler_from_quaternion(quat)
 		# hom_rot_mat_inv = tf.transformations.quaternion_matrix(quaternion_inverse(quat))
 		hom_rot_mat= tf.transformations.quaternion_matrix(quat)
 		euler = tf.transformations.euler_from_matrix(hom_rot_mat, 'sxyz')
+		# euler[1] = -euler[1]
+		# euler[2] = -euler[2]
 		print euler_to_degrees(euler)
 		# last_pose = copy.deepcopy(msg.pose.pose)
 		prev_pose = last_pose
@@ -148,14 +153,15 @@ for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft
 		# first built map, so surely increasing no of nodes, no loop close yet
 		if not graph: #Empty
 			graph[count_nodes] = [last_pose, []]
-			pcl.save(pcl_cloud, os.path.join(opts.dir_prefix, 'scan'+format(count_nodes,'05d')+'.pcd'))
-			cloud_T = np.ones((len(last_cloud_array),4))
-			cloud_T[:,:-1] = pcl_cloud
-			cloud_T=np.dot(cloud_T, inv_hom_mat.T)
-			cloud_T=cloud_T[:,:-1]
-			pcl_cloud_T = pcl.PointCloud()
-			pcl_cloud_T.from_array(np.array(cloud_T, dtype=np.float32))
-			pcl.save(pcl_cloud_T, os.path.join(opts.dir_prefix, 'scanorg'+format(count_nodes,'05d')+'.pcd'))
+			if not opts.nocloudsave:
+				pcl.save(pcl_cloud, os.path.join(opts.dir_prefix, 'scan'+format(count_nodes,'05d')+'.pcd'))
+				cloud_T = np.ones((len(last_cloud_array),4))
+				cloud_T[:,:-1] = pcl_cloud
+				cloud_T=np.dot(cloud_T, inv_hom_mat.T)
+				cloud_T=cloud_T[:,:-1]
+				pcl_cloud_T = pcl.PointCloud()
+				pcl_cloud_T.from_array(np.array(cloud_T, dtype=np.float32))
+				pcl.save(pcl_cloud_T, os.path.join(opts.dir_prefix, 'scanorg'+format(count_nodes,'05d')+'.pcd'))
 			if first_flag:
 				first_flag = False
 			else:
@@ -172,18 +178,20 @@ for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft
 				raise Exception("new node is about being added, but no previous reference!, aborting")
 				exit()
 			graph[count_nodes] = [last_pose,[]]
-			pcl.save(pcl_cloud, os.path.join(opts.dir_prefix, 'scan'+format(count_nodes,'05d')+'.pcd'))
-			cloud_T = np.ones((len(last_cloud_array),4))
-			cloud_T[:,:-1] = pcl_cloud
-			cloud_T=np.dot(cloud_T, inv_hom_mat.T)
-			cloud_T=cloud_T[:,:-1]
-			pcl_cloud_T = pcl.PointCloud()
-			pcl_cloud_T.from_array(np.array(cloud_T, dtype=np.float32))
-			pcl.save(pcl_cloud_T, os.path.join(opts.dir_prefix, 'scanorg'+format(count_nodes,'05d')+'.pcd'))
+			if not opts.nocloudsave:
+				pcl.save(pcl_cloud, os.path.join(opts.dir_prefix, 'scan'+format(count_nodes,'05d')+'.pcd'))
+				cloud_T = np.ones((len(last_cloud_array),4))
+				cloud_T[:,:-1] = pcl_cloud
+				cloud_T=np.dot(cloud_T, inv_hom_mat.T)
+				cloud_T=cloud_T[:,:-1]
+				pcl_cloud_T = pcl.PointCloud()
+				pcl_cloud_T.from_array(np.array(cloud_T, dtype=np.float32))
+				pcl.save(pcl_cloud_T, os.path.join(opts.dir_prefix, 'scanorg'+format(count_nodes,'05d')+'.pcd'))
 
 # print graph
 # strlog = ujson.dumps(graph, ensure_ascii=False, double_precision=4)
-strlog = ujson.dumps(graph, ensure_ascii=False, double_precision=4, indent=2)
+# strlog = ujson.dumps(graph, ensure_ascii=False, double_precision=4, indent=2)
+strlog = jsonpickle.encode(graph)
 # print strlog
 
 bag.close()
