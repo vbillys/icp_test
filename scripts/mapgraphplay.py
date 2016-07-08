@@ -11,6 +11,7 @@ from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Header
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import PoseWithCovariance
+from foobar.msg import GraphLink, GraphStruct, GraphNode
 import sensor_msgs.point_cloud2 as pc2
 import tf
 import math
@@ -32,7 +33,7 @@ opt_parser.add_option('-r','--rate', dest='publish_rate', type='float', default=
 opt_parser.add_option('-s','--startframe', dest='start_frame_no', type='int', default=1)
 opt_parser.add_option('-d','--directory', dest='dir_prefix', type='string', default='')
 opt_parser.add_option('-f','--contfile', dest='graph_filename', type='string', default=None)
-opt_parser.add_option('--tc','--topiccloud', dest='cloud_topic', type='string', default='points')
+opt_parser.add_option('--tc','--topiccloud', dest='cloud_topic', type='string', default='velodyne_points')
 opt_parser.add_option('--to','--topicodom', dest='odom_topic', type='string', default='/vmc_navserver/state')
 opts, args = opt_parser.parse_args(sys.argv[1:])
 
@@ -47,8 +48,9 @@ lines = file.read()
 # print lines
 # graph = ujson.loads(lines)
 graph = jsonpickle.decode(lines)
-# print graph
-
+print graph
+#print type(graph)
+#exit()
 rospy.init_node('map_frame_play', anonymous=False)
 pub_frame   = rospy.Publisher(opts.cloud_topic, PointCloud2)
 pub_odom = rospy.Publisher(opts.odom_topic, Odometry)
@@ -56,7 +58,7 @@ pub_tf = tf.TransformBroadcaster()
 
 rate = rospy.Rate(opts.publish_rate)
 counter_index = opts.start_frame_no #1#21#30#x1
-
+graph_node_names = [x.node_name for x in graph.nodes]
 
 while not rospy.is_shutdown():
 	if opts.useoriginref:
@@ -73,7 +75,9 @@ while not rospy.is_shutdown():
 	else:
 		header.frame_id = 'velodyne' #'odom' #'pose' #'frame' #'velodyne'
 	pcloud = pc2.create_cloud_xyz32(header, pcl_cloud.to_array())
-	pose = graph[str(counter_index)][0]
+	#pose = graph[str(counter_index)][0]
+	index_graph = graph_node_names.index(str(counter_index))
+	pose =  graph.nodes[index_graph].pose
 	print pose
 	odom = Odometry()
 	odom.header = Header()

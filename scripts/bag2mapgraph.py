@@ -9,6 +9,7 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import PoseWithCovariance
+from foobar.msg import GraphLink, GraphStruct, GraphNode
 import sensor_msgs.point_cloud2 as pc2
 import tf
 import math
@@ -105,7 +106,9 @@ last_pose = Pose()
 prev_pose = Pose()
 last_relpose = PoseWithCovariance()
 last_cloud = list()
-graph = {}
+# graph = {}
+graph_dict = {}
+graph = GraphStruct()
 first_flag = True
 for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft_mapped_to_init']):
 # for topic, msg, t in bag.read_messages(topics=['aft_mapped_to_init']):
@@ -151,8 +154,16 @@ for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft
 		count_nodes = count_nodes + 1
 		print 'saving:',count_nodes
 		# first built map, so surely increasing no of nodes, no loop close yet
-		if not graph: #Empty
-			graph[count_nodes] = [last_pose, []]
+		# if not graph: #Empty
+		if not len(graph.nodes): #Empty
+			this_new_node = GraphNode()
+			this_new_node.node_name = str(count_nodes)
+			this_new_node.pose=last_pose
+			# graph[count_nodes] = [last_pose, []]
+			# Ok we keep dict to fasten back reference later when building map
+			# Ok to keep ordering (to refer back to rosified msg list), we add counter to the dict :)
+			# graph_dict[count_nodes] = [last_pose, [], count_nodes-1]
+			graph.nodes.append(this_new_node)
 			if not opts.nocloudsave:
 				pcl.save(pcl_cloud, os.path.join(opts.dir_prefix, 'scan'+format(count_nodes,'05d')+'.pcd'))
 				cloud_T = np.ones((len(last_cloud_array),4))
@@ -169,15 +180,22 @@ for topic, msg, t in bag.read_messages(topics=['velodyne_cloud_registered', 'aft
 				raise Exception("graph still empty but this is not first initialization, quiting check!")
 				exit()
 		else:
-			if count_nodes-1 in graph:
-				last_relpose = PoseWithCovariance()
-				graph[count_nodes-1][1].append([count_nodes,last_relpose])
+			# if count_nodes-1 in graph_dict:
+				# last_relpose = PoseWithCovariance()
+				# graph_dict[count_nodes-1][1].append([count_nodes,last_relpose])
+				# this_new_edge = GraphLink()
+				# this_new_edge.connected_to = str(count_nodes)
+				# graph.nodes[graph_dict[count_nodes-1][2]].edges.append(this_new_edge)
 			# create for this new node
-			else:
-				# This should not happen
-				raise Exception("new node is about being added, but no previous reference!, aborting")
-				exit()
-			graph[count_nodes] = [last_pose,[]]
+			# else:
+				# # This should not happen
+				# raise Exception("new node is about being added, but no previous reference!, aborting")
+				# exit()
+			# graph_dict[count_nodes] = [last_pose,[], count_nodes-1]
+			this_new_node = GraphNode()
+			this_new_node.node_name = str(count_nodes)
+			this_new_node.pose=last_pose
+			graph.nodes.append(this_new_node)
 			if not opts.nocloudsave:
 				pcl.save(pcl_cloud, os.path.join(opts.dir_prefix, 'scan'+format(count_nodes,'05d')+'.pcd'))
 				cloud_T = np.ones((len(last_cloud_array),4))
@@ -199,8 +217,11 @@ bag.close()
 f_handle = open(os.path.join(opts.dir_prefix, opts.graph_filename),'w')
 f_handle.write(zlib.compress(strlog))
 f_handle.close()
-# f_handle_open_map = open(os.path.join(opts.dir_prefix, opts.graph_filename), 'rb')
-# data = f_handle_open_map.read()
-# file = IcpTestTools.ZipInputStream(StringIO.StringIO(data))
-# lines = file.read()
+
+f_handle_open_map = open(os.path.join(opts.dir_prefix, opts.graph_filename), 'rb')
+data = f_handle_open_map.read()
+file = IcpTestTools.ZipInputStream(StringIO.StringIO(data))
+lines = file.read()
 # print lines
+graph = jsonpickle.decode(lines)
+print graph
