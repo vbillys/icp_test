@@ -16,6 +16,20 @@ def normalizeHeading(angle_rad):
 		angle_rad = angle_rad - math.pi*2
 	return angle_rad
 
+def publishOdomRos(x,y,yaw,publisher, header_frame, child_frame):
+	odom_data = Odometry()
+	odom_data.header.stamp = rospy.Time.now()
+	odom_data.header.frame_id = header_frame
+	odom_data.child_frame_id = child_frame
+	odom_data.pose.pose.position.x = x
+	odom_data.pose.pose.position.y = y
+	_quat = tf.transformations.quaternion_from_euler(0,0,yaw)
+	odom_data.pose.pose.orientation.x = _quat[0]
+	odom_data.pose.pose.orientation.y = _quat[1]
+	odom_data.pose.pose.orientation.z = _quat[2]
+	odom_data.pose.pose.orientation.w = _quat[3]
+	# print odom_data
+	publisher.publish(odom_data)
 
 class PoseToTF:
 	def __init__(self, dist_to_meter, dist_thres, moving_odom_frame, map_frame, odom_topic_name, odom_thres=.1):
@@ -23,7 +37,11 @@ class PoseToTF:
 		rospy.Subscriber(odom_topic_name, Odometry, self.processOdomMsg)
 		# rospy.Subscriber('RosAria/pose', Odometry, self.processOdomMsg)
 		# rospy.Subscriber('odom', Odometry, self.processOdomMsg)
+
 		rospy.Subscriber('velodyne_points', PointCloud2, self.processVeloMsg)
+
+		self.repub_odom = rospy.Publisher('odometry', Odometry)
+
 		self.repub_velo = rospy.Publisher('velotime_points', PointCloud2)
 		self.dist_to_meter = dist_to_meter
 		self.dist_thres_for_adding_data = dist_thres
@@ -56,11 +74,12 @@ class PoseToTF:
 
 	def processVeloMsg(self, msg):
 		msg.header.stamp = rospy.Time.now()
-		msg.header.frame_id = 'odom_corrected'
-		if self.dist_accum >= self.dist_accum_last + self.dist_thres_for_adding_data or self.init_velo:
-			self.repub_velo.publish(msg)
-			self.dist_accum_last = self.dist_accum
-			self.init_velo = False
+		# msg.header.frame_id = 'odom_corrected'
+		msg.header.frame_id = 'velodyne'
+		# if self.dist_accum >= self.dist_accum_last + self.dist_thres_for_adding_data or self.init_velo:
+		self.repub_velo.publish(msg)
+			# self.dist_accum_last = self.dist_accum
+			# self.init_velo = False
 	def processOdomMsg(self, msg):
 		if self.init:
 			# print 'calculating odom'
@@ -86,10 +105,12 @@ class PoseToTF:
 			# print self.x_pose, self.y_pose
 
 			self.pub_br.sendTransform((self.x_pose , self.y_pose, 0), tf.transformations.quaternion_from_euler(0,0,self.heading_rad), rospy.Time.now(), self.moving_odom_frame, self.map_frame)
+			publishOdomRos(self.x_pose, self.y_pose, self.heading_rad, self.repub_odom, 'odom', 'velodyne')
 			pass
 		else:
 			# print 'inited'
 			self.pub_br.sendTransform((0 , 0 ,0), tf.transformations.quaternion_from_euler(0,0,0), rospy.Time.now(), self.moving_odom_frame, self.map_frame)
+			publishOdomRos(0, 0, 0, self.repub_odom, 'odom', 'velodyne')
 			self.first_odom_msg = msg
 			pass
 		# self.last_odom = curr_odom
@@ -98,13 +119,17 @@ class PoseToTF:
 
 g_dist_to_meter = 1. #1./3000#1./2700 - for miev, 1./3000 for coms2
 g_dist_thres = .5#2.5#.1#1#5#2
-# g_moving_odom_frame = 'base_footprint'
-g_moving_odom_frame = 'base_link'
+g_moving_odom_frame = 'base_footprint'
+
+
+# g_moving_odom_frame = 'base_link'
 # g_moving_odom_frame = 'laser'
 # g_moving_odom_frame = 'odom'
 # g_map_frame = 'nav'
-# g_map_frame = 'world'
-g_map_frame = 'odom'
+
+g_map_frame = 'world'
+# g_map_frame = 'odom'
+
 # g_odometry_topic = 'odom'
 g_odometry_topic = 'RosAria/pose'
 if __name__ == '__main__':
