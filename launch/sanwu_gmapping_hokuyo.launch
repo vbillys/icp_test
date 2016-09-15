@@ -1,0 +1,52 @@
+<launch>
+<!--<node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" 
+args="0.30 0.0 0.0 0.0 0.0 0.0 /base_link /laser 100" />-->
+<node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+<rosparam>
+odom_frame: odom
+base_frame: base_link
+maxUrange: 15.5
+maxRange: 16.5
+particles: 80
+minimumScore: 20
+map_update_interval: 0.5
+temporalUpdate: -1.0
+linearUpdate: 0.2
+angularUpdate: 0.25
+delta: 0.025
+</rosparam>
+</node>
+</launch>
+<!--
+resampleThreshold: 0.9
+srr: 1.13
+stt: 2.13
+stt: 4.13
+maxUrange: 23.5
+maxRange: 30.5
+minimumScore: 20
+particles: 80
+linearUpdate: 0.2
+angularUpdate: 0.25
+iterations: 5
+xmin: -1.0
+ymin: -15.0
+xmax: 18.0
+ymax: 15.0
+
+odom_frame: odom
+maxUrange: 13.5
+maxRange: 13.5
+map_update_interval: 12.0
+particles: 80
+delta: 0.025
+base_frame: base_link
+minimumScore: 0
+linearUpdate: 1.2
+angularUpdate: 1.25
+temporalUpdate: 5.0
+xmin: -1.0
+ymin: -1.0
+xmax: 1.0
+ymax: 1.0
+-->
