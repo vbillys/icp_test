@@ -1,0 +1,12 @@
+<launch>
+<node name="image_mono_saver" pkg="image_view" type="image_saver" >
+<remap from="image" to="/image_mono"/>
+<param name="filename_format" value="/home/solydk/Documents/workspace/ElasticFusion/GUI/build/images/%04i.png"/>
+</node>
+<node name="image_proc_sync" pkg="image_proc" type="image_proc">
+<remap from="image_raw" to="/img_sync"/>
+<remap from="camera_info" to="/camera/left/camera_info"/>
+</node>
+<node name="uncompressed_sync_images" pkg="image_transport" type="republish" args="compressed in:=/img_sync raw out:=/img_sync"/>
+</launch>
+
