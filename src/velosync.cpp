@@ -11,10 +11,12 @@
 /*===========================================================================*/
  
 #include "tf/transform_listener.h"
+#include "tf/transform_datatypes.h"
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <nav_msgs/Odometry.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -31,8 +33,13 @@ struct Settings
   std::string velo1_topic_name;
   std::string velo2_topic_name;
   std::string combined_frame_name;
+  std::string velo1_comp_odom_name;
+  std::string velo2_comp_odom_name;
 }g_settings;
 
+void getCurrentCameraPose(const ros::Time & t, tf::Stamped<tf::Pose> & pose, const std::string & source, const std::string & target);
+
+tf::TransformListener * p_tf_listener;
 ros::Publisher g_pub_combined;
 tf::Pose g_velo1_pose, g_velo2_pose;
 bool g_waiting_for_tf;
@@ -46,6 +53,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::Po
   PCLPointCloudXYI latest_pcl_pc1, latest_pcl_pc2;
   pcl::fromROSMsg(*pc1, latest_pcl_pc1);
   pcl::fromROSMsg(*pc2, latest_pcl_pc2);
+  // compensation (ultimately for loam)
   // we see from base_link instead
   pcl_ros::transformPointCloud(latest_pcl_pc1, latest_pcl_pc1, g_velo1_pose);
   pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, g_velo2_pose);
@@ -58,13 +66,18 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::Po
   g_pub_combined.publish(combined);
 }
 
+void callback2(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::PointCloud2ConstPtr& pc2, const nav_msgs::OdometryConstPtr& odom1);
+void callback3(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::PointCloud2ConstPtr& pc2, const nav_msgs::OdometryConstPtr& odom2);
+void callback4(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::PointCloud2ConstPtr& pc2, const nav_msgs::OdometryConstPtr& odom1, const nav_msgs::OdometryConstPtr& odom2);
+
+
 int main(int argc, char *argv[])
 {
   ros::init(argc, argv, "velosync");
 
   ros::NodeHandle nh;
 
-  tf::TransformListener tf_listener;
+  p_tf_listener = new tf::TransformListener();
 
   // handle parameters
   ros::NodeHandle pnh("~");
@@ -74,6 +87,8 @@ int main(int argc, char *argv[])
   pnh.param<std::string>("velo2_frame", g_settings.velo2_frame_name, "velodyne_upper");
   pnh.param<std::string>("velo1_topic", g_settings.velo1_topic_name, "velodyne1/velodyne_points");
   pnh.param<std::string>("velo2_topic", g_settings.velo2_topic_name, "velodyne2/velodyne_points");
+  pnh.param<std::string>("velo1_comp_odom", g_settings.velo1_comp_odom_name, "");
+  pnh.param<std::string>("velo2_comp_odom", g_settings.velo2_comp_odom_name, "");
   pnh.param<std::string>("combined_frame", g_settings.combined_frame_name, "combined");
 
 
@@ -81,11 +96,45 @@ int main(int argc, char *argv[])
 
   message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_1_sub(nh, g_settings.velo1_topic_name, 1);
   message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_2_sub(nh, g_settings.velo2_topic_name, 1);
-  
+  message_filters::Subscriber<nav_msgs::Odometry> odom_1_sub(nh, g_settings.velo1_comp_odom_name, 1);
+  message_filters::Subscriber<nav_msgs::Odometry> odom_2_sub(nh, g_settings.velo2_comp_odom_name, 1);
+
   typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> MySyncPolicy;
-  // ApproximateTime takes a queue size as its constructor argument, hence MySyncPolicy(10)
+  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, nav_msgs::Odometry> MySyncPolicy2;
+  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, nav_msgs::Odometry, nav_msgs::Odometry> MySyncPolicy3;
   message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), pointcloud_1_sub, pointcloud_2_sub);
-  sync.registerCallback(boost::bind(&callback, _1, _2));
+  message_filters::Synchronizer<MySyncPolicy2> sync2(MySyncPolicy2(10), pointcloud_1_sub, pointcloud_2_sub, odom_1_sub);
+  message_filters::Synchronizer<MySyncPolicy2> sync3(MySyncPolicy2(10), pointcloud_1_sub, pointcloud_2_sub, odom_2_sub);
+  message_filters::Synchronizer<MySyncPolicy3> sync4(MySyncPolicy3(10), pointcloud_1_sub, pointcloud_2_sub, odom_1_sub, odom_2_sub);
+
+  unsigned char mode = 0;
+  bool odom1_on, odom2_on = false;
+  if (""!=g_settings.velo1_comp_odom_name) {
+    mode++;
+    odom1_on = true;
+  }
+  if (""!=g_settings.velo2_comp_odom_name) {
+    mode++;
+    odom2_on = true;
+  }
+
+  switch (mode) {
+    case 0:
+      sync.registerCallback(boost::bind(&callback, _1, _2));
+      break;
+    case 1:
+      if (odom1_on) {
+	sync2.registerCallback(boost::bind(&callback2, _1, _2, _3));
+      }else
+      {
+	sync3.registerCallback(boost::bind(&callback3, _1, _2, _3));
+      }
+      break;
+    case 2:
+      sync4.registerCallback(boost::bind(&callback4, _1, _2, _3, _4));
+      break;
+      
+  }
 
   ros::Rate loop_rate(15);
   g_waiting_for_tf = true;
@@ -103,8 +152,8 @@ int main(int argc, char *argv[])
 				 ros::Time(), g_settings.velo2_frame_name);
     
     try {
-      tf_listener.transformPose(g_settings.base1_frame_name,ident1, velo1_tf);
-      tf_listener.transformPose(g_settings.base2_frame_name,ident2, velo2_tf);
+      p_tf_listener->transformPose(g_settings.base1_frame_name,ident1, velo1_tf);
+      p_tf_listener->transformPose(g_settings.base2_frame_name,ident2, velo2_tf);
     }catch(tf::TransformException & e) {
       ROS_ERROR_DELAYED_THROTTLE(3,"Can't transform to base");
       continue;
@@ -122,6 +171,98 @@ int main(int argc, char *argv[])
   ros::spin();
   return 0;
 }
+
+void getCurrentCameraPose(const ros::Time & t, tf::Stamped<tf::Pose> & pose, const std::string & source, const std::string & target)
+{
+  tf::Stamped<tf::Pose> ident (tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0,0,0)), t, target);
+  try
+  {
+    p_tf_listener->transformPose(source, ident, pose);
+  }
+  catch(tf::TransformException & e)
+  {
+    ROS_WARN("Failed to compute odom pose, skipping scan (%s)", e.what());
+  }
+}
+
+void callback2(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::PointCloud2ConstPtr& pc2, const nav_msgs::OdometryConstPtr& odom1)
+{
+  if (g_waiting_for_tf) {
+    ROS_WARN("Due to unknown transfrom cannot combine");
+    return;
+  }
+  PCLPointCloudXYI latest_pcl_pc1, latest_pcl_pc2;
+  pcl::fromROSMsg(*pc1, latest_pcl_pc1);
+  pcl::fromROSMsg(*pc2, latest_pcl_pc2);
+  // compensation (ultimately for loam)
+  tf::Pose pose;
+  tf::poseMsgToTF(odom1->pose.pose, pose);
+  pcl_ros::transformPointCloud(latest_pcl_pc1, latest_pcl_pc1, pose.inverse());
+  // we see from base_link instead
+  pcl_ros::transformPointCloud(latest_pcl_pc1, latest_pcl_pc1, g_velo1_pose);
+  pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, g_velo2_pose);
+  // combine
+  latest_pcl_pc1 += latest_pcl_pc2;
+  sensor_msgs::PointCloud2 combined;
+  pcl::toROSMsg(latest_pcl_pc1, combined);
+  combined.header.stamp = ros::Time::now();
+  combined.header.frame_id = g_settings.combined_frame_name;
+  g_pub_combined.publish(combined);
+}
+
+
+void callback3(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::PointCloud2ConstPtr& pc2, const nav_msgs::OdometryConstPtr& odom2)
+{
+  if (g_waiting_for_tf) {
+    ROS_WARN("Due to unknown transfrom cannot combine");
+    return;
+  }
+  PCLPointCloudXYI latest_pcl_pc1, latest_pcl_pc2;
+  pcl::fromROSMsg(*pc1, latest_pcl_pc1);
+  pcl::fromROSMsg(*pc2, latest_pcl_pc2);
+  // compensation (ultimately for loam)
+  tf::Pose pose;
+  tf::poseMsgToTF(odom2->pose.pose, pose);
+  pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, pose.inverse());
+  // we see from base_link instead
+  pcl_ros::transformPointCloud(latest_pcl_pc1, latest_pcl_pc1, g_velo1_pose);
+  pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, g_velo2_pose);
+  // combine
+  latest_pcl_pc1 += latest_pcl_pc2;
+  sensor_msgs::PointCloud2 combined;
+  pcl::toROSMsg(latest_pcl_pc1, combined);
+  combined.header.stamp = ros::Time::now();
+  combined.header.frame_id = g_settings.combined_frame_name;
+  g_pub_combined.publish(combined);
+}
+
+void callback4(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::PointCloud2ConstPtr& pc2, const nav_msgs::OdometryConstPtr& odom1, const nav_msgs::OdometryConstPtr& odom2)
+{
+  if (g_waiting_for_tf) {
+    ROS_WARN("Due to unknown transfrom cannot combine");
+    return;
+  }
+  PCLPointCloudXYI latest_pcl_pc1, latest_pcl_pc2;
+  pcl::fromROSMsg(*pc1, latest_pcl_pc1);
+  pcl::fromROSMsg(*pc2, latest_pcl_pc2);
+  // compensation (ultimately for loam)
+  tf::Pose pose;
+  tf::poseMsgToTF(odom1->pose.pose, pose);
+  pcl_ros::transformPointCloud(latest_pcl_pc1, latest_pcl_pc1, pose.inverse());
+  tf::poseMsgToTF(odom2->pose.pose, pose);
+  pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, pose.inverse());
+  // we see from base_link instead
+  pcl_ros::transformPointCloud(latest_pcl_pc1, latest_pcl_pc1, g_velo1_pose);
+  pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, g_velo2_pose);
+  // combine
+  latest_pcl_pc1 += latest_pcl_pc2;
+  sensor_msgs::PointCloud2 combined;
+  pcl::toROSMsg(latest_pcl_pc1, combined);
+  combined.header.stamp = ros::Time::now();
+  combined.header.frame_id = g_settings.combined_frame_name;
+  g_pub_combined.publish(combined);
+}
+
 /*===========================================================================*/
 /*===============================[   ]===============================*/
 /*===========================================================================*/
