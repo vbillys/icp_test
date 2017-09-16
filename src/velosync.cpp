@@ -30,6 +30,7 @@ struct Settings
   std::string velo2_frame_name;
   std::string velo1_topic_name;
   std::string velo2_topic_name;
+  std::string combined_frame_name;
 }g_settings;
 
 ros::Publisher g_pub_combined;
@@ -53,7 +54,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::Po
   sensor_msgs::PointCloud2 combined;
   pcl::toROSMsg(latest_pcl_pc1, combined);
   combined.header.stamp = ros::Time::now();
-  combined.header.frame_id = "/combined";
+  combined.header.frame_id = g_settings.combined_frame_name;
   g_pub_combined.publish(combined);
 }
 
@@ -73,6 +74,7 @@ int main(int argc, char *argv[])
   pnh.param<std::string>("velo2_frame", g_settings.velo2_frame_name, "velodyne_upper");
   pnh.param<std::string>("velo1_topic", g_settings.velo1_topic_name, "velodyne1/velodyne_points");
   pnh.param<std::string>("velo2_topic", g_settings.velo2_topic_name, "velodyne2/velodyne_points");
+  pnh.param<std::string>("combined_frame", g_settings.combined_frame_name, "combined");
 
 
   g_pub_combined = nh.advertise<sensor_msgs::PointCloud2 > ("combined_cloud", 1);
