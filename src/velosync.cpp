@@ -22,6 +22,16 @@
 
 typedef pcl::PointCloud<pcl::PointXYZI> PCLPointCloudXYI;
 
+struct Settings
+{
+  std::string base1_frame_name;
+  std::string base2_frame_name;
+  std::string velo1_frame_name;
+  std::string velo2_frame_name;
+  std::string velo1_topic_name;
+  std::string velo2_topic_name;
+}g_settings;
+
 ros::Publisher g_pub_combined;
 tf::Pose g_velo1_pose, g_velo2_pose;
 bool g_waiting_for_tf;
@@ -55,10 +65,20 @@ int main(int argc, char *argv[])
 
   tf::TransformListener tf_listener;
 
+  // handle parameters
+  ros::NodeHandle pnh("~");
+  pnh.param<std::string>("base1_frame" , g_settings.base1_frame_name , "base_link");
+  pnh.param<std::string>("base2_frame" , g_settings.base2_frame_name , "base_link");
+  pnh.param<std::string>("velo1_frame", g_settings.velo1_frame_name, "velodyne_below");
+  pnh.param<std::string>("velo2_frame", g_settings.velo2_frame_name, "velodyne_upper");
+  pnh.param<std::string>("velo1_topic", g_settings.velo1_topic_name, "velodyne1/velodyne_points");
+  pnh.param<std::string>("velo2_topic", g_settings.velo2_topic_name, "velodyne2/velodyne_points");
+
+
   g_pub_combined = nh.advertise<sensor_msgs::PointCloud2 > ("combined_cloud", 1);
 
-  message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_1_sub(nh, "velodyne1/velodyne_points", 1);
-  message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_2_sub(nh, "velodyne2/velodyne_points", 1);
+  message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_1_sub(nh, g_settings.velo1_topic_name, 1);
+  message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_2_sub(nh, g_settings.velo2_topic_name, 1);
   
   typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> MySyncPolicy;
   // ApproximateTime takes a queue size as its constructor argument, hence MySyncPolicy(10)
@@ -75,14 +95,14 @@ int main(int argc, char *argv[])
 
     tf::Stamped<tf::Pose> ident1 (tf::Transform(tf::createIdentityQuaternion(),
 				 tf::Vector3(0,0,0)),
-				 ros::Time(), "velodyne_below");
+				 ros::Time(), g_settings.velo1_frame_name);
     tf::Stamped<tf::Pose> ident2 (tf::Transform(tf::createIdentityQuaternion(),
 				 tf::Vector3(0,0,0)),
-				 ros::Time(), "velodyne_upper");
+				 ros::Time(), g_settings.velo2_frame_name);
     
     try {
-      tf_listener.transformPose("base_link",ident1, velo1_tf);
-      tf_listener.transformPose("base_link",ident2, velo2_tf);
+      tf_listener.transformPose(g_settings.base1_frame_name,ident1, velo1_tf);
+      tf_listener.transformPose(g_settings.base2_frame_name,ident2, velo2_tf);
     }catch(tf::TransformException & e) {
       ROS_ERROR_DELAYED_THROTTLE(3,"Can't transform to base");
       continue;
