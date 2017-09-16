@@ -211,6 +211,9 @@ void callback2(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::P
 }
 
 
+// callback3 is a little bit different than callback2, it takes
+// the pose it self instead and after, this is to put this cloud
+// in global coord frame
 void callback3(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::PointCloud2ConstPtr& pc2, const nav_msgs::OdometryConstPtr& odom2)
 {
   if (g_waiting_for_tf) {
@@ -223,15 +226,23 @@ void callback3(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::P
   // compensation (ultimately for loam)
   tf::Pose pose;
   tf::poseMsgToTF(odom2->pose.pose, pose);
-  pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, pose.inverse());
+  //pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, pose.inverse());
   // we see from base_link instead
-  pcl_ros::transformPointCloud(latest_pcl_pc1, latest_pcl_pc1, g_velo1_pose);
+  //pcl_ros::transformPointCloud(latest_pcl_pc1, latest_pcl_pc1, g_velo1_pose);
   pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, g_velo2_pose);
+
+  // a different approach, bring the lidar to global
+  // so we apply this odom after
+  // remember this odom is with respect to first lidar frame
+  pose = g_velo1_pose.inverse()*pose;
+  pcl_ros::transformPointCloud(latest_pcl_pc2, latest_pcl_pc2, pose);
+
   // combine
   latest_pcl_pc1 += latest_pcl_pc2;
   sensor_msgs::PointCloud2 combined;
   pcl::toROSMsg(latest_pcl_pc1, combined);
-  combined.header.stamp = ros::Time::now();
+  //combined.header.stamp = ros::Time::now();
+  combined.header.stamp = pc1->header.stamp;
   combined.header.frame_id = g_settings.combined_frame_name;
   g_pub_combined.publish(combined);
 }
