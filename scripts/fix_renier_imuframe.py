@@ -40,7 +40,8 @@ def processImuMsg(msg):
   # remsg.orientation.w = re_quat[3]
   remsg.linear_acceleration = msg.linear_acceleration;
   msg.header.frame_id = 'imu_renier'
-  g_pub_imu.publish(msg)
+  if not math.isnan(msg.linear_acceleration.z):
+      g_pub_imu.publish(msg)
 
 
 if __name__ == '__main__':
