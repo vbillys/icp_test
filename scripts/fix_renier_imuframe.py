@@ -6,6 +6,8 @@ from sensor_msgs.msg import Imu
 import tf
 
 g_pub_imu = []
+g_first_time = True
+g_prev_msg_time = 0
 
 def euler_to_degrees(input):
   output = [0,0,0]
@@ -16,6 +18,12 @@ def euler_to_degrees(input):
 
 def processImuMsg(msg):
     #print msg
+  global g_first_time
+  global g_prev_msg_time
+  if g_first_time:
+      g_prev_msg_time = msg.header.stamp
+      g_first_time = False
+      return
   quat = (msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w)
   # R =  tf.transformations.quaternion_matrix(quat)
   # # R[0:3, 2] = - R[0:3, 2]
@@ -40,7 +48,9 @@ def processImuMsg(msg):
   # remsg.orientation.w = re_quat[3]
   remsg.linear_acceleration = msg.linear_acceleration;
   msg.header.frame_id = 'imu_renier'
-  if not math.isnan(msg.linear_acceleration.z):
+  timestamp_diff = msg.header.stamp - g_prev_msg_time
+  if not math.isnan(msg.linear_acceleration.z) and timestamp_diff > rospy.Duration(0):
+      g_prev_msg_time = msg.header.stamp
       g_pub_imu.publish(msg)
 
 
