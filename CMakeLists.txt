@@ -34,7 +34,7 @@ find_package(catkin REQUIRED COMPONENTS
 	velodyne_driver
 	velodyne_msgs
 	velodyne_pointcloud
-	libpointmatcher_ros
+	#libpointmatcher_ros
 	message_generation
 	)
 
@@ -54,8 +54,8 @@ find_package( PCL REQUIRED )
 #find_package(velodyne_pointcloud REQUIRED)
 #find_package(velodyne_driver REQUIRED)
 
-find_package(MRPT REQUIRED slam;vision;gui;topography)
-find_package(libpointmatcher REQUIRED)
+#find_package(MRPT REQUIRED slam;vision;gui;topography)
+#find_package(libpointmatcher REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -165,7 +165,7 @@ include_directories(
 #   src/${PROJECT_NAME}/icp_test.cpp
 # )
 
-add_library(icp_tools ${PROJECT_SOURCE_DIR}/src/icp_tools.cpp)
+#add_library(icp_tools ${PROJECT_SOURCE_DIR}/src/icp_tools.cpp)
 
 link_directories(${PCL_LIBRARY_DIRS} src ${PROJECT_SOURCE_DIR}/src/toro)
 add_definitions(${PCL_DEFINITIONS})
@@ -189,91 +189,92 @@ message(STATUS "${catkin_LIBRARIES}")
 #)
 
 
-add_executable(ibeo_ecu_online src/ibeo_ecu_online.cpp)
-target_link_libraries(ibeo_ecu_online /home/avavav/Downloads/IbeoSDK2.11.1/libs/libibeosdk_d.so-2.11.1
-  rt
-  ${Boost_SYSTEM_LIBRARY}
-  ${Boost_THREAD_LIBRARY}
-  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-  ${libpointmatcher_LIBRARIES}
-  )
+#add_executable(ibeo_ecu_online src/ibeo_ecu_online.cpp)
+#target_link_libraries(ibeo_ecu_online /home/avavav/Downloads/IbeoSDK2.11.1/libs/libibeosdk_d.so-2.11.1
+  #rt
+  #${Boost_SYSTEM_LIBRARY}
+  #${Boost_THREAD_LIBRARY}
+  #${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  #${libpointmatcher_LIBRARIES}
+  #)
+
 #target_include_directories(ibeo_ecu_online PRIVATE /home/avavav/Documents/workspace/flirtlib/trunk/src/feature)
 #set_target_properties (ibeo_ecu_online PROPERTIES INCLUDE_DIRECTORIES /home/avavav/Documents/workspace/flirtlib/trunk/src/feature)
 
-add_executable(ibeo_file_read src/ibeo_file_read.cpp)
-target_link_libraries(ibeo_file_read /home/avavav/Downloads/IbeoSDK2.11.1/libs/libibeosdk_d.so-2.11.1
-	rt
-	${Boost_SYSTEM_LIBRARY}
-	${Boost_THREAD_LIBRARY}
-	${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-	${libpointmatcher_LIBRARIES}
-	)
+#add_executable(ibeo_file_read src/ibeo_file_read.cpp)
+#target_link_libraries(ibeo_file_read /home/avavav/Downloads/IbeoSDK2.11.1/libs/libibeosdk_d.so-2.11.1
+	#rt
+	#${Boost_SYSTEM_LIBRARY}
+	#${Boost_THREAD_LIBRARY}
+	#${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+	#${libpointmatcher_LIBRARIES}
+	#)
 
-add_executable(test_node src/test.cpp)
-target_link_libraries(test_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
-  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-  ${libpointmatcher_LIBRARIES}
-  libtoro.a
-  )
-
-
-add_executable(test_lpm_node src/test_lpm.cpp)
-target_link_libraries(test_lpm_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
-  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-  ${libpointmatcher_LIBRARIES}
-  libtoro.a
-  /home/avavav/Documents/workspace/flirtlib/trunk/build/src/feature/libfeature.so
-  /home/avavav/Documents/workspace/flirtlib/trunk/build/src/utils/libutils.so
-  /home/avavav/Documents/workspace/flirtlib/trunk/build/src/geometry/libgeometry.so
-  )
-
-add_executable(points_saver_node src/points_saver_node.cpp)
-target_link_libraries(points_saver_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
-  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-  ${libpointmatcher_LIBRARIES}
-  libtoro.a
-  )
-
-add_executable(points_saver_with_filter_node src/points_saver_with_filter_node.cpp)
-target_link_libraries(points_saver_with_filter_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
-  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-  ${libpointmatcher_LIBRARIES}
-  libtoro.a
-  )
+#add_executable(test_node src/test.cpp)
+#target_link_libraries(test_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  #${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  #${libpointmatcher_LIBRARIES}
+  #libtoro.a
+  #)
 
 
-add_executable(online_icp_node src/online_icp_node.cpp)
-target_link_libraries(online_icp_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
-  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-  ${libpointmatcher_LIBRARIES}
-  libtoro.a
-  icp_tools
-  )
+#add_executable(test_lpm_node src/test_lpm.cpp)
+#target_link_libraries(test_lpm_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  #${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  #${libpointmatcher_LIBRARIES}
+  #libtoro.a
+  #/home/avavav/Documents/workspace/flirtlib/trunk/build/src/feature/libfeature.so
+  #/home/avavav/Documents/workspace/flirtlib/trunk/build/src/utils/libutils.so
+  #/home/avavav/Documents/workspace/flirtlib/trunk/build/src/geometry/libgeometry.so
+  #)
 
-add_executable(online_second_icp src/online_second_icp.cpp)
-target_link_libraries(online_second_icp ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
-  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-  ${libpointmatcher_LIBRARIES}
-  libtoro.a
-  icp_tools
-  )
+#add_executable(points_saver_node src/points_saver_node.cpp)
+#target_link_libraries(points_saver_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  #${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  #${libpointmatcher_LIBRARIES}
+  #libtoro.a
+  #)
 
-add_executable(online_lpm_node src/online_lpm_node.cpp)
-target_link_libraries(online_lpm_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
-  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-  ${libpointmatcher_LIBRARIES}
-  libtoro.a
-  icp_tools
-  )
+#add_executable(points_saver_with_filter_node src/points_saver_with_filter_node.cpp)
+#target_link_libraries(points_saver_with_filter_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  #${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  #${libpointmatcher_LIBRARIES}
+  #libtoro.a
+  #)
 
 
-add_executable(online_second_lpm src/online_second_lpm.cpp)
-target_link_libraries(online_second_lpm ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
-  ${roscpp_LIBRARIES} ${catkin_LIBRARIES}
-  ${libpointmatcher_LIBRARIES}
-  libtoro.a
-  icp_tools
-  )
+#add_executable(online_icp_node src/online_icp_node.cpp)
+#target_link_libraries(online_icp_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  #${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  #${libpointmatcher_LIBRARIES}
+  #libtoro.a
+  #icp_tools
+  #)
+
+#add_executable(online_second_icp src/online_second_icp.cpp)
+#target_link_libraries(online_second_icp ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  #${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  #${libpointmatcher_LIBRARIES}
+  #libtoro.a
+  #icp_tools
+  #)
+
+#add_executable(online_lpm_node src/online_lpm_node.cpp)
+#target_link_libraries(online_lpm_node ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  #${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  #${libpointmatcher_LIBRARIES}
+  #libtoro.a
+  #icp_tools
+  #)
+
+
+#add_executable(online_second_lpm src/online_second_lpm.cpp)
+#target_link_libraries(online_second_lpm ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
+  #${roscpp_LIBRARIES} ${catkin_LIBRARIES}
+  #${libpointmatcher_LIBRARIES}
+  #libtoro.a
+  #icp_tools
+  #)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -283,6 +284,12 @@ target_link_libraries(online_second_lpm ${MRPT_LIBS} ${Boost_SYSTEM_LIBRARY}
 # target_link_libraries(icp_test_node
 #   ${catkin_LIBRARIES}
 # )
+
+add_executable(velosync_node src/velosync.cpp)
+target_link_libraries(velosync_node  #${Boost_SYSTEM_LIBRARY}
+	#${roscpp_LIBRARIES} 
+	${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
