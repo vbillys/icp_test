@@ -1,0 +1,9 @@
+#base1_frame: 
+#base2_frame: 
+velo1_frame: denso_first_echo
+velo2_frame: denso_back_first_echo
+velo3_frame: velodyne_left
+velo1_topic: /denso_packets
+velo2_topic: /denso_back_packets
+velo3_topic: /velodyne_left/velodyne_points
+combined_frame: base_link

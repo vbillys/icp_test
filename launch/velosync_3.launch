@@ -1,0 +1,5 @@
+<launch>
+	<node pkg="icp_test" name="velosync" type="velosync_3_node" output="screen">
+		<rosparam command="load" file="$(find icp_test)/launch/velosync_3.yaml"/>
+	</node>
+</launch>

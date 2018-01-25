@@ -1,0 +1,9 @@
+#base1_frame: 
+#base2_frame: 
+velo1_frame: velodyne_front
+velo2_frame: velodyne_top
+velo3_frame: velodyne_left
+velo1_topic: /velodyne_front/velodyne_points
+velo2_topic: /velodyne_top/velodyne_points
+velo3_topic: /velodyne_left/velodyne_points
+combined_frame: base_link

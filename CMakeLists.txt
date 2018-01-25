@@ -291,6 +291,12 @@ target_link_libraries(velosync_node  #${Boost_SYSTEM_LIBRARY}
 	${catkin_LIBRARIES}
 )
 
+add_executable(velosync_3_node src/velosync_3.cpp)
+target_link_libraries(velosync_3_node  #${Boost_SYSTEM_LIBRARY}
+	#${roscpp_LIBRARIES} 
+	${catkin_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############
