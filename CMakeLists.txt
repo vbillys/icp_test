@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(icp_test)
 
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -36,6 +38,7 @@ find_package(catkin REQUIRED COMPONENTS
 	velodyne_pointcloud
 	#libpointmatcher_ros
 	message_generation
+	ecl_threads
 	)
 
 ## System dependencies are found with CMake's conventions
@@ -295,6 +298,12 @@ add_executable(velosync_3_node src/velosync_3.cpp)
 target_link_libraries(velosync_3_node  #${Boost_SYSTEM_LIBRARY}
 	#${roscpp_LIBRARIES} 
 	${catkin_LIBRARIES}
+)
+
+add_executable(velosync_3_fixedout_node src/velosync_3_fixedout.cpp)
+target_link_libraries(velosync_3_fixedout_node  #${Boost_SYSTEM_LIBRARY}
+  #${roscpp_LIBRARIES} 
+  ${catkin_LIBRARIES}
 )
 
 #############

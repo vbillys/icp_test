@@ -21,6 +21,7 @@
 #include <pcl_ros/transforms.h>
 #include <std_msgs/Int32.h>
 #include "file_writer.h"
+#include "ecl/threads.hpp"
 
 typedef pcl::PointCloud<pcl::PointXYZI> PCLPointCloudXYI;
 
@@ -72,8 +73,96 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& pc1, const sensor_msgs::Po
   g_pub_combined.publish(combined);
 }
 
+ecl::Mutex g_pc1_mutex, g_pc2_mutex, g_pc3_mutex;
+ecl::Mutex g_transform_mutex;
+PCLPointCloudXYI g_latest_pcl_pc1, g_latest_pcl_pc2, g_latest_pcl_pc3;
+double g_latest_time_pc1, g_latest_time_pc2, g_latest_time_pc3;
+bool g_update_flag_pc1, g_update_flag_pc2, g_update_flag_pc3;
+bool g_transform_flag;
+void HandlePC1(const sensor_msgs::PointCloud2ConstPtr& pc_msg)
+{
+  g_pc1_mutex.lock();
+  g_transform_mutex.lock();
+  pcl::fromROSMsg(*pc_msg, g_latest_pcl_pc1);
+  g_latest_time_pc1 = pc_msg->header.stamp.toSec();
+  g_update_flag_pc1 = true;
+  g_pc1_mutex.unlock();
+  g_transform_mutex.unlock();
+}
+
+void HandlePC2(const sensor_msgs::PointCloud2ConstPtr& pc_msg)
+{
+  g_pc2_mutex.lock();
+  g_transform_mutex.lock();
+  pcl::fromROSMsg(*pc_msg, g_latest_pcl_pc2);
+  g_latest_time_pc2 = pc_msg->header.stamp.toSec();
+  g_update_flag_pc2 = true;
+  g_pc2_mutex.unlock();
+  g_transform_mutex.unlock();
+}
+
+void HandlePC3(const sensor_msgs::PointCloud2ConstPtr& pc_msg)
+{
+  g_pc3_mutex.lock();
+  g_transform_mutex.lock();
+  pcl::fromROSMsg(*pc_msg, g_latest_pcl_pc3);
+  g_latest_time_pc3 = pc_msg->header.stamp.toSec();
+  g_update_flag_pc3 = true;
+  g_pc3_mutex.unlock();
+  g_transform_mutex.unlock();
+}
+
+void HandleSyncTimer(const ros::TimerEvent& event)
+{
+  g_pc1_mutex.lock();
+  g_pc2_mutex.lock();
+  g_pc3_mutex.lock();
+  g_transform_mutex.lock();
+  if (g_update_flag_pc1 && g_update_flag_pc2 && g_update_flag_pc3) {
+    g_pub_synctime.publish(std_msgs::Int32());
+    g_update_flag_pc3 = false;
+    g_update_flag_pc2 = false;
+    g_update_flag_pc1 = false;
+    g_transform_flag  = true;
+  }
+  g_pc1_mutex.unlock();
+  g_pc2_mutex.unlock();
+  g_pc3_mutex.unlock();
+  g_transform_mutex.unlock();
+}
+
+void HandleTransformTimer(const ros::TimerEvent& event)
+{
+  if (!g_transform_flag) {
+    return;
+  }
+  g_transform_mutex.lock();
+
+  sensor_msgs::PointCloud2 combined;
+  combined.header.stamp = ros::Time::now();
+
+  PCLPointCloudXYI latest_pcl_pc1, latest_pcl_pc2, latest_pcl_pc3;
+
+  pcl_ros::transformPointCloud(g_latest_pcl_pc1, latest_pcl_pc1, g_velo1_pose);
+  pcl_ros::transformPointCloud(g_latest_pcl_pc2, latest_pcl_pc2, g_velo2_pose);
+  pcl_ros::transformPointCloud(g_latest_pcl_pc3, latest_pcl_pc3, g_velo3_pose);
+  // combine
+  latest_pcl_pc1 += latest_pcl_pc2;
+  latest_pcl_pc1 += latest_pcl_pc3;
+  pcl::toROSMsg(latest_pcl_pc1, combined);
+  g_pub_combined.publish(combined);
+
+  g_transform_flag  = false;
+  g_transform_mutex.unlock();
+}
+
 int main(int argc, char *argv[])
 {
+  g_update_flag_pc1 = false;
+  g_update_flag_pc2 = false;
+  g_update_flag_pc3 = false;
+  g_transform_flag  = false;
+
   ros::init(argc, argv, "velosync");
 
   ros::NodeHandle nh;
@@ -98,18 +187,21 @@ int main(int argc, char *argv[])
   g_pub_synctime
     = nh.advertise<std_msgs::Int32 > ("merged", 1);
 
-  message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_1_sub(nh, g_settings.velo1_topic_name, 5);
-  message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_2_sub(nh, g_settings.velo2_topic_name, 5);
-  message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_3_sub(nh, g_settings.velo3_topic_name, 5);
+  //message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_1_sub(nh, g_settings.velo1_topic_name, 5);
+  //message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_2_sub(nh, g_settings.velo2_topic_name, 5);
+  //message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_3_sub(nh, g_settings.velo3_topic_name, 5);
+  ros::Subscriber pointcloud_1_sub = nh.subscribe(g_settings.velo1_topic_name, 5, HandlePC1);
+  ros::Subscriber pointcloud_2_sub = nh.subscribe(g_settings.velo2_topic_name, 5, HandlePC2);
+  ros::Subscriber pointcloud_3_sub = nh.subscribe(g_settings.velo3_topic_name, 5, HandlePC3);
   
   typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> MySyncPolicy;
   // ApproximateTime takes a queue size as its constructor argument, hence MySyncPolicy(10)
-  message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(20), pointcloud_1_sub, pointcloud_2_sub, pointcloud_3_sub);
-  sync.setInterMessageLowerBound(0,ros::Duration(0.05));
-  sync.setInterMessageLowerBound(1,ros::Duration(0.05));
-  sync.setInterMessageLowerBound(2,ros::Duration(0.05));
+  //message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(20), pointcloud_1_sub, pointcloud_2_sub, pointcloud_3_sub);
+  //sync.setInterMessageLowerBound(0,ros::Duration(0.05));
+  //sync.setInterMessageLowerBound(1,ros::Duration(0.05));
+  //sync.setInterMessageLowerBound(2,ros::Duration(0.05));
   //sync.setMaxIntervalDuration(ros::Duration(0.025));
-  sync.registerCallback(boost::bind(&callback, _1, _2, _3));
+  //sync.registerCallback(boost::bind(&callback, _1, _2, _3));
 
   ros::Rate loop_rate(15);
   g_waiting_for_tf = true;
@@ -147,6 +239,12 @@ int main(int argc, char *argv[])
     
   } while (g_waiting_for_tf && ros::ok());
   ROS_INFO("tf locked :)");
+
+  // do our own horse powered timestamp checks
+  // 
+  ros::Timer sync_timer = nh.createTimer(ros::Duration(0.005), HandleSyncTimer);
+  ros::Timer transform_timer = nh.createTimer(ros::Duration(0.05), HandleTransformTimer);
+
 
   ros::spin();
   return 0;
