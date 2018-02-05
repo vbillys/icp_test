@@ -22,6 +22,7 @@
 #include <std_msgs/Int32.h>
 #include "file_writer.h"
 #include "ecl/threads.hpp"
+#include "make_unique.h"
 
 typedef pcl::PointCloud<pcl::PointXYZI> PCLPointCloudXYI;
 
@@ -37,7 +38,10 @@ struct Settings
   std::string velo2_topic_name;
   std::string velo3_topic_name;
   std::string combined_frame_name;
+  bool write_delta_times;
 }g_settings;
+
+std::unique_ptr<mcl_3d::io::StreamFileWriter> g_file_writer;
 
 ros::Publisher g_pub_combined;
 ros::Publisher g_pub_synctime;
@@ -84,7 +88,8 @@ void HandlePC1(const sensor_msgs::PointCloud2ConstPtr& pc_msg)
   g_pc1_mutex.lock();
   g_transform_mutex.lock();
   pcl::fromROSMsg(*pc_msg, g_latest_pcl_pc1);
-  g_latest_time_pc1 = pc_msg->header.stamp.toSec();
+  //g_latest_time_pc1 = pc_msg->header.stamp.toSec();
+  g_latest_time_pc1 = ros::Time::now().toSec();
   g_update_flag_pc1 = true;
   g_pc1_mutex.unlock();
   g_transform_mutex.unlock();
@@ -95,7 +100,8 @@ void HandlePC2(const sensor_msgs::PointCloud2ConstPtr& pc_msg)
   g_pc2_mutex.lock();
   g_transform_mutex.lock();
   pcl::fromROSMsg(*pc_msg, g_latest_pcl_pc2);
-  g_latest_time_pc2 = pc_msg->header.stamp.toSec();
+  //g_latest_time_pc2 = pc_msg->header.stamp.toSec();
+  g_latest_time_pc2 = ros::Time::now().toSec();
   g_update_flag_pc2 = true;
   g_pc2_mutex.unlock();
   g_transform_mutex.unlock();
@@ -106,12 +112,17 @@ void HandlePC3(const sensor_msgs::PointCloud2ConstPtr& pc_msg)
   g_pc3_mutex.lock();
   g_transform_mutex.lock();
   pcl::fromROSMsg(*pc_msg, g_latest_pcl_pc3);
-  g_latest_time_pc3 = pc_msg->header.stamp.toSec();
+  //g_latest_time_pc3 = pc_msg->header.stamp.toSec();
+  g_latest_time_pc3 = ros::Time::now().toSec();
   g_update_flag_pc3 = true;
   g_pc3_mutex.unlock();
   g_transform_mutex.unlock();
 }
 
+double g_last_sync_time;
+double g_latency_sync_time_pc1;
+double g_latency_sync_time_pc2;
+double g_latency_sync_time_pc3;
 void HandleSyncTimer(const ros::TimerEvent& event)
 {
   g_pc1_mutex.lock();
@@ -124,6 +135,10 @@ void HandleSyncTimer(const ros::TimerEvent& event)
     g_update_flag_pc2 = false;
     g_update_flag_pc1 = false;
     g_transform_flag  = true;
+    g_last_sync_time  = ros::Time::now().toSec();
+    g_latency_sync_time_pc1 =  g_latest_time_pc1;
+    g_latency_sync_time_pc2 =  g_latest_time_pc2;
+    g_latency_sync_time_pc3 =  g_latest_time_pc3;
   }
   g_pc1_mutex.unlock();
   g_pc2_mutex.unlock();
@@ -152,6 +167,14 @@ void HandleTransformTimer(const ros::TimerEvent& event)
   pcl::toROSMsg(latest_pcl_pc1, combined);
   g_pub_combined.publish(combined);
 
+  if (g_settings.write_delta_times) {
+    double curr_time = ros::Time::now().toSec();
+    int n=0; char buffer[200];
+    n += sprintf(buffer, "%.5f %.5f %.5f %.5f %.5f %.5f %.5f\n", curr_time - g_latency_sync_time_pc1 , curr_time - g_latency_sync_time_pc2 , curr_time - g_latency_sync_time_pc3 , g_last_sync_time - g_latency_sync_time_pc1 , g_last_sync_time - g_latency_sync_time_pc2 , g_last_sync_time - g_latency_sync_time_pc3 , curr_time - g_last_sync_time);
+    g_file_writer->Write(buffer, n);
+    ROS_INFO("%s", buffer);
+  }
+
   g_transform_flag  = false;
   g_transform_mutex.unlock();
 }
@@ -162,6 +185,8 @@ int main(int argc, char *argv[])
   g_update_flag_pc2 = false;
   g_update_flag_pc3 = false;
   g_transform_flag  = false;
+
+
 
   ros::init(argc, argv, "velosync");
 
@@ -181,7 +206,11 @@ int main(int argc, char *argv[])
   pnh.param<std::string>("velo2_topic", g_settings.velo2_topic_name, "velodyne2/velodyne_points");
   pnh.param<std::string>("velo3_topic", g_settings.velo3_topic_name, "velodyne3/velodyne_points");
   pnh.param<std::string>("combined_frame", g_settings.combined_frame_name, "combined");
+  pnh.param<bool>("write_delta_times", g_settings.write_delta_times, false);
 
+  if (g_settings.write_delta_times) {
+    g_file_writer = mcl_3d::common::make_unique<mcl_3d::io::StreamFileWriter>("latency.csv");
+  }
 
   g_pub_combined = nh.advertise<sensor_msgs::PointCloud2 > ("combined_cloud", 1);
   g_pub_synctime
@@ -243,7 +272,7 @@ int main(int argc, char *argv[])
   // do our own horse powered timestamp checks
   // 
   ros::Timer sync_timer = nh.createTimer(ros::Duration(0.005), HandleSyncTimer);
-  ros::Timer transform_timer = nh.createTimer(ros::Duration(0.05), HandleTransformTimer);
+  ros::Timer transform_timer = nh.createTimer(ros::Duration(0.01), HandleTransformTimer);
 
 
   ros::spin();

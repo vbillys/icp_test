@@ -7,3 +7,4 @@ velo1_topic: /denso_front
 velo2_topic: /denso_back
 velo3_topic: /left_velodyne
 combined_frame: base_link
+write_delta_times: true

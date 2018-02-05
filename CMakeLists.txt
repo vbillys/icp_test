@@ -300,7 +300,7 @@ target_link_libraries(velosync_3_node  #${Boost_SYSTEM_LIBRARY}
 	${catkin_LIBRARIES}
 )
 
-add_executable(velosync_3_fixedout_node src/velosync_3_fixedout.cpp)
+add_executable(velosync_3_fixedout_node src/velosync_3_fixedout.cpp src/file_writer.cc)
 target_link_libraries(velosync_3_fixedout_node  #${Boost_SYSTEM_LIBRARY}
   #${roscpp_LIBRARIES} 
   ${catkin_LIBRARIES}
