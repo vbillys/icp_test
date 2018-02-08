@@ -39,6 +39,7 @@ struct Settings
   std::string velo3_topic_name;
   std::string combined_frame_name;
   bool write_delta_times;
+  bool conditional_drop;
 }g_settings;
 
 std::unique_ptr<mcl_3d::io::StreamFileWriter> g_file_writer;
@@ -131,14 +132,37 @@ void HandleSyncTimer(const ros::TimerEvent& event)
   g_transform_mutex.lock();
   if (g_update_flag_pc1 && g_update_flag_pc2 && g_update_flag_pc3) {
     g_pub_synctime.publish(std_msgs::Int32());
-    g_update_flag_pc3 = false;
-    g_update_flag_pc2 = false;
-    g_update_flag_pc1 = false;
     g_transform_flag  = true;
     g_last_sync_time  = ros::Time::now().toSec();
     g_latency_sync_time_pc1 =  g_latest_time_pc1;
     g_latency_sync_time_pc2 =  g_latest_time_pc2;
     g_latency_sync_time_pc3 =  g_latest_time_pc3;
+    double laten_pc1 = g_last_sync_time - g_latest_time_pc1;
+    double laten_pc2 = g_last_sync_time - g_latest_time_pc2;
+    double laten_pc3 = g_last_sync_time - g_latest_time_pc3;
+    // conditional drop
+    if (g_settings.conditional_drop) {
+#define DROP_THRES 0.089
+      if (laten_pc1 > DROP_THRES) {
+	g_transform_flag = false;
+	g_update_flag_pc1 = false;
+      }
+      if (laten_pc2 > DROP_THRES) {
+	g_transform_flag = false;
+	g_update_flag_pc2 = false;
+      }
+      if (laten_pc3 > DROP_THRES) {
+	g_transform_flag = false;
+	g_update_flag_pc3 = false;
+      }
+    }
+
+    if (g_transform_flag) {
+      g_update_flag_pc3 = false;
+      g_update_flag_pc2 = false;
+      g_update_flag_pc1 = false;
+    }
+
   }
   g_pc1_mutex.unlock();
   g_pc2_mutex.unlock();
@@ -167,12 +191,21 @@ void HandleTransformTimer(const ros::TimerEvent& event)
   pcl::toROSMsg(latest_pcl_pc1, combined);
   g_pub_combined.publish(combined);
 
+  double latency_pc1 = g_last_sync_time - g_latency_sync_time_pc1;
+  double latency_pc2 = g_last_sync_time - g_latency_sync_time_pc2;
+  double latency_pc3 = g_last_sync_time - g_latency_sync_time_pc3;
+
+  if (latency_pc1 > 0.099 || latency_pc2 > 0.099 || latency_pc3 > 0.099) {
+    ROS_WARN("over than limit: %.5f %.5f %.5f",latency_pc1, latency_pc2, latency_pc3);
+  }
+
+
   if (g_settings.write_delta_times) {
     double curr_time = ros::Time::now().toSec();
     int n=0; char buffer[200];
-    n += sprintf(buffer, "%.5f %.5f %.5f %.5f %.5f %.5f %.5f\n", curr_time - g_latency_sync_time_pc1 , curr_time - g_latency_sync_time_pc2 , curr_time - g_latency_sync_time_pc3 , g_last_sync_time - g_latency_sync_time_pc1 , g_last_sync_time - g_latency_sync_time_pc2 , g_last_sync_time - g_latency_sync_time_pc3 , curr_time - g_last_sync_time);
+    n += sprintf(buffer, "%.5f %.5f %.5f %.5f %.5f %.5f %.5f\n", curr_time - g_latency_sync_time_pc1 , curr_time - g_latency_sync_time_pc2 , curr_time - g_latency_sync_time_pc3 , latency_pc1 , latency_pc2 , latency_pc3 , curr_time - g_last_sync_time);
     g_file_writer->Write(buffer, n);
-    ROS_INFO("%s", buffer);
+    //ROS_INFO("%s", buffer);
   }
 
   g_transform_flag  = false;
@@ -207,6 +240,7 @@ int main(int argc, char *argv[])
   pnh.param<std::string>("velo3_topic", g_settings.velo3_topic_name, "velodyne3/velodyne_points");
   pnh.param<std::string>("combined_frame", g_settings.combined_frame_name, "combined");
   pnh.param<bool>("write_delta_times", g_settings.write_delta_times, false);
+  pnh.param<bool>("conditional_drop", g_settings.conditional_drop, false);
 
   if (g_settings.write_delta_times) {
     g_file_writer = mcl_3d::common::make_unique<mcl_3d::io::StreamFileWriter>("latency.csv");
